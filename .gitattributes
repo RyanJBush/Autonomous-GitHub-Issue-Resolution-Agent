@@ -1,0 +1,3 @@
+# Byte-exact content: the demo repository's commit SHA and the fixture diffs depend on it.
+demo/target/** -text
+fixtures/** -text

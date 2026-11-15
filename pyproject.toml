@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "issue-resolution-agent"
+version = "0.1.0"
+description = "Supervised, bounded MVP: one model proposal for one synthetic Python issue, validated by a strict patch policy and recorded in a review packet."
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.7,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[tool.setuptools]
+packages = ["ira"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"

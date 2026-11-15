@@ -1,0 +1,5 @@
+{
+  "schema_version": "ira.response.v1",
+  "outcome": "cannot_propose",
+  "reason": "The issue requires changing tests, which is outside the allowed scope."
+}

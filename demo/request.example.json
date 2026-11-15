@@ -1,0 +1,42 @@
+{
+  "schema_version": "ira.request.v1",
+  "run_id": "demo-good-001",
+  "repository": {
+    "path": "/tmp/ira-demo-repo",
+    "identity": "ira-synthetic-demo-v1",
+    "base_commit": "eb455af5a468dc06630d0758f6989490fc2ddcfd",
+    "allowlisted_file": "src/labels.py"
+  },
+  "issue": {
+    "title": "normalize_label keeps surrounding and repeated whitespace",
+    "body": "normalize_label(\"  Bug   Report \") returns \"  bug   report \" but the docstring promises a\ntrimmed label with internal whitespace collapsed to a single space: \"bug report\"."
+  },
+  "limits": {
+    "max_response_bytes": 32768,
+    "max_patch_bytes": 8192,
+    "max_hunks": 3,
+    "max_added_lines": 20,
+    "max_removed_lines": 20,
+    "max_changed_lines": 30
+  },
+  "attempts": 1,
+  "trusted_test": {
+    "path": "demo/trusted_tests/test_issue.py",
+    "sha256": "dbc96774fc5c7374cc91017e97d988637bde2455893ee5329a267cb43646b5d6",
+    "test_ids": [
+      "test_issue.py::test_trims_and_collapses_whitespace",
+      "test_issue.py::test_whitespace_only_label_is_invalid",
+      "test_issue.py::test_existing_behaviour_kept"
+    ]
+  },
+  "execution": {
+    "timeout_s": 60,
+    "memory_mb": 256,
+    "pids": 64,
+    "cpus": 1
+  },
+  "adapter": {
+    "kind": "synthetic_fixture",
+    "fixture_case": "good_trim_collapse"
+  }
+}

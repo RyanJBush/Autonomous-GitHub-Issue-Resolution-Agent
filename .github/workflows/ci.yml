@@ -1,0 +1,39 @@
+# Offline checks only: synthetic fixtures, no model credentials, no secrets, no candidate execution.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned dev dependencies (system Python 3.12 on ubuntu-24.04)
+        run: |
+          python3 --version
+          python3 -m venv .venv
+          .venv/bin/pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: pytest
+        run: .venv/bin/python -m pytest -q -rs
+      - name: Synthetic fixture evaluation
+        run: .venv/bin/python -m ira eval --out out/eval
+      - name: Demo repository reproduces the pinned commit
+        run: .venv/bin/python -m ira build-demo --dest "$RUNNER_TEMP/demo-repo"
+      - name: Publish evaluation summary
+        if: ${{ always() }}
+        run: |
+          if [ -f out/eval/eval-summary.md ]; then cat out/eval/eval-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() }}
+        with:
+          name: synthetic-eval
+          path: out/eval/
+          if-no-files-found: warn

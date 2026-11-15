@@ -1,0 +1,25 @@
+{
+  "schema_version": "ira.pinned.v1",
+  "label": "SYNTHETIC demonstration repository; not a real project",
+  "identity": "ira-synthetic-demo-v1",
+  "base_commit": "eb455af5a468dc06630d0758f6989490fc2ddcfd",
+  "base_tree": "6e941d1740edd1fc004131035dff3668bfec42bb",
+  "allowlisted_file": "src/labels.py",
+  "allowlisted_blob": "e644784a14e9df523a4233c4129495ebd7e5d954",
+  "issue_file": "demo/issue.md",
+  "issue_sha256": "b49a4f41569652a8ce6f54b3b2cf63a3da4072bfd10ef7ead61e78b6d4d5dad7",
+  "trusted_test": {
+    "path": "demo/trusted_tests/test_issue.py",
+    "sha256": "dbc96774fc5c7374cc91017e97d988637bde2455893ee5329a267cb43646b5d6",
+    "test_ids": [
+      "test_issue.py::test_trims_and_collapses_whitespace",
+      "test_issue.py::test_whitespace_only_label_is_invalid",
+      "test_issue.py::test_existing_behaviour_kept"
+    ],
+    "expected_base_failures": [
+      "test_issue.py::test_trims_and_collapses_whitespace",
+      "test_issue.py::test_whitespace_only_label_is_invalid"
+    ],
+    "executed_in_m1": false
+  }
+}

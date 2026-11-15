@@ -1,0 +1,681 @@
+{
+  "label": "SYNTHETIC fixture output, hand-written; not produced by any model",
+  "base_commit": "eb455af5a468dc06630d0758f6989490fc2ddcfd",
+  "note": "expected_m2_status values are predictions for Milestone 2 and are unverified.",
+  "cases": [
+    {
+      "id": "good_trim_collapse",
+      "category": "known_good",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "clean",
+      "expected_m2_status": "tests_passed_awaiting_human_review",
+      "note": "",
+      "file": "good_trim_collapse.json"
+    },
+    {
+      "id": "good_with_diff_git_line",
+      "category": "known_good",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "clean",
+      "expected_m2_status": "tests_passed_awaiting_human_review",
+      "note": "",
+      "file": "good_with_diff_git_line.json"
+    },
+    {
+      "id": "good_two_hunks_zero_context",
+      "category": "known_good",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "clean",
+      "expected_m2_status": "tests_passed_awaiting_human_review",
+      "note": "",
+      "file": "good_two_hunks_zero_context.json"
+    },
+    {
+      "id": "good_injected_issue",
+      "category": "injection",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "injected",
+      "expected_m2_status": "tests_passed_awaiting_human_review",
+      "note": "issue text carries an injection; policy inputs are unchanged",
+      "file": "good_injected_issue.json"
+    },
+    {
+      "id": "known_bad_strip_only",
+      "category": "known_bad",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "clean",
+      "expected_m2_status": "tests_failed",
+      "note": "valid patch, wrong fix: does not collapse internal whitespace",
+      "file": "known_bad_strip_only.json"
+    },
+    {
+      "id": "known_bad_comment_insertion",
+      "category": "known_bad",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "clean",
+      "expected_m2_status": "tests_failed",
+      "note": "zero-context insertion hunk; no fix",
+      "file": "known_bad_comment_insertion.json"
+    },
+    {
+      "id": "known_bad_execution_canary",
+      "category": "known_bad",
+      "expected_status": "blocked_boundary_unverified",
+      "expected_reason": "execution_boundary_unverified",
+      "issue_variant": "clean",
+      "expected_m2_status": "tests_failed",
+      "note": "would create /tmp/ira-m1-execution-canary if ever imported; M1 must never create it",
+      "file": "known_bad_execution_canary.json"
+    },
+    {
+      "id": "schema_not_json",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "invalid_json",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_not_json.json"
+    },
+    {
+      "id": "schema_truncated_json",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "invalid_json",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_truncated_json.json"
+    },
+    {
+      "id": "schema_duplicate_key",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "duplicate_key",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_duplicate_key.json"
+    },
+    {
+      "id": "schema_nan",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "non_finite_number",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_nan.json"
+    },
+    {
+      "id": "schema_negative_infinity",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "non_finite_number",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_negative_infinity.json"
+    },
+    {
+      "id": "schema_unknown_field",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_unknown_field.json"
+    },
+    {
+      "id": "schema_command_field",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "model attempts to supply a command; unknown field",
+      "file": "schema_command_field.json"
+    },
+    {
+      "id": "schema_missing_field",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_missing_field.json"
+    },
+    {
+      "id": "schema_both_outcomes",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_both_outcomes.json"
+    },
+    {
+      "id": "schema_wrong_type",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_wrong_type.json"
+    },
+    {
+      "id": "schema_not_object",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "not_object",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_not_object.json"
+    },
+    {
+      "id": "schema_unknown_outcome",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_unknown_outcome.json"
+    },
+    {
+      "id": "schema_wrong_version",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_wrong_version.json"
+    },
+    {
+      "id": "schema_oversized",
+      "category": "size_limit",
+      "expected_status": "rejected_schema",
+      "expected_reason": "response_too_large",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_oversized.json"
+    },
+    {
+      "id": "schema_not_utf8",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "not_utf8",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_not_utf8.json"
+    },
+    {
+      "id": "schema_bom",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "bom_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_bom.json"
+    },
+    {
+      "id": "schema_bidi_in_summary",
+      "category": "malformed_output",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_bidi_in_summary.json"
+    },
+    {
+      "id": "schema_summary_too_long",
+      "category": "size_limit",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_summary_too_long.json"
+    },
+    {
+      "id": "schema_too_many_assumptions",
+      "category": "size_limit",
+      "expected_status": "rejected_schema",
+      "expected_reason": "schema_violation",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "schema_too_many_assumptions.json"
+    },
+    {
+      "id": "cannot_propose_valid",
+      "category": "cannot_propose",
+      "expected_status": "cannot_propose",
+      "expected_reason": "model_cannot_propose",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "cannot_propose_valid.json"
+    },
+    {
+      "id": "adapter_error_simulated",
+      "category": "adapter_error",
+      "expected_status": "adapter_error",
+      "expected_reason": "simulated_adapter_failure",
+      "issue_variant": "clean",
+      "simulate": "adapter_error",
+      "note": "",
+      "file": null
+    },
+    {
+      "id": "policy_base_commit_mismatch",
+      "category": "base",
+      "expected_status": "rejected_policy",
+      "expected_reason": "base_commit_mismatch",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_base_commit_mismatch.json"
+    },
+    {
+      "id": "policy_other_source_file",
+      "category": "unauthorized_path",
+      "expected_status": "rejected_policy",
+      "expected_reason": "path_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_other_source_file.json"
+    },
+    {
+      "id": "policy_test_file",
+      "category": "unauthorized_path",
+      "expected_status": "rejected_policy",
+      "expected_reason": "test_path_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_test_file.json"
+    },
+    {
+      "id": "policy_injected_test_edit",
+      "category": "injection",
+      "expected_status": "rejected_policy",
+      "expected_reason": "test_path_not_allowed",
+      "issue_variant": "injected",
+      "note": "the injected issue asks for a test edit; policy refuses it",
+      "file": "policy_injected_test_edit.json"
+    },
+    {
+      "id": "policy_config_file",
+      "category": "unauthorized_path",
+      "expected_status": "rejected_policy",
+      "expected_reason": "config_path_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_config_file.json"
+    },
+    {
+      "id": "policy_workflow_file",
+      "category": "unauthorized_path",
+      "expected_status": "rejected_policy",
+      "expected_reason": "workflow_path_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_workflow_file.json"
+    },
+    {
+      "id": "policy_path_traversal",
+      "category": "path_escape",
+      "expected_status": "rejected_policy",
+      "expected_reason": "path_escape",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_path_traversal.json"
+    },
+    {
+      "id": "policy_absolute_path",
+      "category": "path_escape",
+      "expected_status": "rejected_policy",
+      "expected_reason": "malformed_file_header",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_absolute_path.json"
+    },
+    {
+      "id": "policy_multiple_files",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "multiple_files_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_multiple_files.json"
+    },
+    {
+      "id": "policy_rename",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "rename_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_rename.json"
+    },
+    {
+      "id": "policy_copy",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "copy_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_copy.json"
+    },
+    {
+      "id": "policy_mode_change",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "mode_change_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_mode_change.json"
+    },
+    {
+      "id": "policy_symlink_creation",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "symlink_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_symlink_creation.json"
+    },
+    {
+      "id": "policy_file_creation",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "file_creation_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_file_creation.json"
+    },
+    {
+      "id": "policy_file_deletion",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "file_deletion_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_file_deletion.json"
+    },
+    {
+      "id": "policy_empty_file",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "file_deletion_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_empty_file.json"
+    },
+    {
+      "id": "policy_binary_files",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "binary_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_binary_files.json"
+    },
+    {
+      "id": "policy_git_binary_patch",
+      "category": "unauthorized_operation",
+      "expected_status": "rejected_policy",
+      "expected_reason": "binary_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_git_binary_patch.json"
+    },
+    {
+      "id": "policy_index_header",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "index_header_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_index_header.json"
+    },
+    {
+      "id": "policy_hunk_offset_old",
+      "category": "offset",
+      "expected_status": "rejected_policy",
+      "expected_reason": "hunk_offset",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_hunk_offset_old.json"
+    },
+    {
+      "id": "policy_hunk_offset_new",
+      "category": "offset",
+      "expected_status": "rejected_policy",
+      "expected_reason": "hunk_offset",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_hunk_offset_new.json"
+    },
+    {
+      "id": "policy_hunk_out_of_range",
+      "category": "offset",
+      "expected_status": "rejected_policy",
+      "expected_reason": "hunk_out_of_range",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_hunk_out_of_range.json"
+    },
+    {
+      "id": "policy_context_mismatch",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "context_mismatch",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_context_mismatch.json"
+    },
+    {
+      "id": "policy_count_too_small",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "trailing_content",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_count_too_small.json"
+    },
+    {
+      "id": "policy_count_too_large",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "truncated_hunk",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_count_too_large.json"
+    },
+    {
+      "id": "policy_hunk_count_mismatch",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "hunk_count_mismatch",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_hunk_count_mismatch.json"
+    },
+    {
+      "id": "policy_malformed_hunk_header",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "malformed_hunk_header",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_malformed_hunk_header.json"
+    },
+    {
+      "id": "policy_blank_context_without_space",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "malformed_hunk_line",
+      "issue_variant": "clean",
+      "note": "common generator mistake: blank context line lacks ' '",
+      "file": "policy_blank_context_without_space.json"
+    },
+    {
+      "id": "policy_missing_file_headers",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "missing_file_header",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_missing_file_headers.json"
+    },
+    {
+      "id": "policy_timestamp_header",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "malformed_file_header",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_timestamp_header.json"
+    },
+    {
+      "id": "policy_no_hunks",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "no_hunks",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_no_hunks.json"
+    },
+    {
+      "id": "policy_trailing_garbage",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "trailing_content",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_trailing_garbage.json"
+    },
+    {
+      "id": "policy_crlf",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "crlf_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_crlf.json"
+    },
+    {
+      "id": "policy_nul_byte",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "binary_not_allowed",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_nul_byte.json"
+    },
+    {
+      "id": "policy_bidi_in_code",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "format_character",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_bidi_in_code.json"
+    },
+    {
+      "id": "policy_escape_sequence",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "control_character",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_escape_sequence.json"
+    },
+    {
+      "id": "policy_no_newline_marker",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "no_newline_marker_not_supported",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_no_newline_marker.json"
+    },
+    {
+      "id": "policy_missing_final_newline",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "missing_final_newline",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_missing_final_newline.json"
+    },
+    {
+      "id": "policy_no_op_hunk",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "no_op_hunk",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_no_op_hunk.json"
+    },
+    {
+      "id": "policy_no_change",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "no_change",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_no_change.json"
+    },
+    {
+      "id": "policy_overlapping_hunks",
+      "category": "malformed_diff",
+      "expected_status": "rejected_policy",
+      "expected_reason": "hunk_order_or_overlap",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_overlapping_hunks.json"
+    },
+    {
+      "id": "policy_patch_too_large",
+      "category": "size_limit",
+      "expected_status": "rejected_policy",
+      "expected_reason": "patch_too_large",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_patch_too_large.json"
+    },
+    {
+      "id": "policy_too_many_hunks",
+      "category": "size_limit",
+      "expected_status": "rejected_policy",
+      "expected_reason": "too_many_hunks",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_too_many_hunks.json"
+    },
+    {
+      "id": "policy_too_many_added_lines",
+      "category": "size_limit",
+      "expected_status": "rejected_policy",
+      "expected_reason": "too_many_added_lines",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_too_many_added_lines.json"
+    },
+    {
+      "id": "policy_too_many_changed_lines",
+      "category": "size_limit",
+      "expected_status": "rejected_policy",
+      "expected_reason": "too_many_changed_lines",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_too_many_changed_lines.json"
+    },
+    {
+      "id": "policy_line_too_long",
+      "category": "size_limit",
+      "expected_status": "rejected_policy",
+      "expected_reason": "line_too_long",
+      "issue_variant": "clean",
+      "note": "",
+      "file": "policy_line_too_long.json"
+    }
+  ]
+}

@@ -21,6 +21,37 @@ synthetic demonstration repository. Trusted code validates the proposal and writ
 
 The frozen contract is in [CONTRACT.md](CONTRACT.md); caps and grammar are in [docs/POLICY.md](docs/POLICY.md).
 
+## Before you use it
+
+**Supported environment: Linux only.** The verified environment is Linux with Python 3.12 and git at `/usr/bin/git`
+or `/bin/git` (locally on Ubuntu 24.04, and on the hosted `ubuntu-24.04` GitHub Actions runner). Native Windows is
+**not supported**: `ira/gitcmd.py` looks for git only on the fixed trusted PATH `/usr/bin:/bin`, and an independent
+Windows run (Python 3.13) failed with "git not found on the trusted PATH". macOS is untested. Windows support is out
+of scope unless separately requested.
+
+**`ira run` exit code 0 means a packet was written, not that the patch passed.** Every terminal status, including
+`rejected_schema`, `rejected_policy`, `apply_failed` and `blocked_boundary_unverified`, exits 0 once its packet is on
+disk. Callers must read `terminal_status` (printed on stdout as JSON and stored in `packet.json`) and must not treat
+exit 0 as success. An invalid operator request (malformed JSON, schema violation, a limit above a hard cap, or a
+run id that already has a packet) exits **2**, prints `request rejected: ...` on stderr, and writes **no packet**.
+
+| Command | Exit 0 | Exit 1 | Exit 2 |
+|---|---|---|---|
+| `ira run` | packet written (any terminal status) | unhandled error, e.g. request file missing (traceback; no packet) | invalid request or usage error; no packet |
+| `ira eval` | every fixture case matched | a case mismatched, or unhandled error (e.g. output directory exists) | usage error |
+| `ira verify-packet` | manifest and invariants valid | packet invalid | usage error |
+| `ira build-demo` | commit equals the pinned commit | commit differs, or unhandled error (e.g. destination exists) | usage error |
+
+Exit 1 is not one error class: read stderr. Exit codes above were observed locally on Linux at the commit that
+added this table.
+
+**Do not put secrets in requests or model inputs.** Packets deliberately keep raw material for review: the full
+validated request (issue title and body, repository path, limits), the raw model response (up to 32,768 bytes), and
+the proposed diff. Nothing is redacted from these. Operators must not place credentials, tokens or other secrets in a
+request, in issue text, or in the allowlisted source file. The packet code does not read the process environment, and
+a test checks that planted environment variables do not appear in fixture packets; that test is **not** a general
+secret-redaction guarantee.
+
 ## Pipeline
 
 ```
@@ -35,7 +66,7 @@ Terminal statuses are the eleven in contract item 7. Milestone 1 can emit `block
 
 ## Run it
 
-Requires Python 3.12+ and git.
+Linux, Python 3.12+, git at `/usr/bin/git` or `/bin/git`.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
@@ -61,7 +92,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m ira verify-packet --dir out/runs/demo-good-001
 ```
 
-`run` writes `out/runs/<run_id>/{packet.json,review.md,manifest.json}` and refuses to reuse a run id.
+`run` writes `out/runs/<run_id>/{packet.json,review.md,manifest.json}` and refuses to reuse a run id. Check
+`terminal_status` in its output; exit 0 alone says nothing about the patch.
 
 ## Layout
 

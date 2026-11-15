@@ -38,5 +38,7 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 | 2026-11-15 | Claude | Follow-up review at 9d87293 (05:50:44–05:53:19 UTC) | 2.6 min | +3 min handoff |
 | 2026-11-15 | Codex | Address follow-up review | unmeasured | unmeasured |
 
+| 2026-11-15 | Codex | Public presentation, repository history and CI artifact review | unmeasured | unmeasured |
+
 Running totals: Claude measured ≈ 92.1 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7 + 3.5 + 5.7 + 2.7 + 5.0 + 2.9 + 4.0 + 2.6); Claude estimated additions ≈ 61 min;
 Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus ~19 min approximate local adapter/evaluation work and unmeasured review and reasoning time.

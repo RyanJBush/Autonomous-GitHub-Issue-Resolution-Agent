@@ -104,7 +104,8 @@ def _project_commit():
 
 def execute(request_path: Path | str, out_dir: Path | str, *, adapter_factory=default_adapter_factory,
             work_root: Path | str | None = None, pinned: dict | None = None, executor=None,
-            live_approval: dict | None = None, recording_dir: Path | str | None = None) -> tuple[dict, Path]:
+            live_approval: dict | None = None, recording_dir: Path | str | None = None,
+            single_use=None) -> tuple[dict, Path]:
     raw_request = Path(request_path).read_bytes()
     req = load_request(raw_request)  # RequestError propagates: no run, no packet
     run_dir = Path(out_dir) / req.run_id
@@ -116,9 +117,16 @@ def execute(request_path: Path | str, out_dir: Path | str, *, adapter_factory=de
         if not (live_approval or {}).get("operator_approval", {}).get("approved") is True \
                 or binds.get("request_sha256") != hashlib.sha256(raw_request).hexdigest():
             raise RequestError("live call refused: no verified operator approval packet for this exact request")
+        if single_use is None or not live_approval.get("approval_id"):
+            raise RequestError("live call refused: a single-use ledger and an approval id are required")
     pinned = pinned or load_pinned()
     r = _Run(req, raw_request)
     r.recording_dir = Path(recording_dir) if recording_dir else Path(out_dir) / "recordings"
+    if req.adapter.kind == "live_model":
+        approval_id = live_approval["approval_id"]
+        r.claim = lambda: single_use.claim(approval_id, request_sha256=r.request_sha256, run_id=req.run_id)
+    else:
+        r.claim = None
     status, reason = Status.EXECUTION_ERROR, "internal_error"
     try:
         status, reason = _pipeline(r, pinned, adapter_factory, Path(work_root or tempfile.gettempdir()), executor)
@@ -176,6 +184,8 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
     adapter = None
     try:
         adapter = adapter_factory(req.adapter)
+        if req.adapter.kind == "live_model":
+            adapter.before_send = r.claim  # consumed immediately before the request, whatever happens next
         r.adapter_identity = {**adapter.identity(), "calls": 0}
         if req.adapter.kind == "replay_recording":
             r.replay = adapter.provenance()

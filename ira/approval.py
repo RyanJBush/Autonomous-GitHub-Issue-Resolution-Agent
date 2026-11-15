@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import secrets
 from pathlib import Path
 
 from . import caps, pricing, prompt
@@ -19,9 +21,14 @@ from .live_adapter import ADAPTER_VERSION
 from .models import load_request
 
 SCHEMA = "ira.live_approval.v1"
-LABEL = "PAID MODEL CALL APPROVAL REQUEST: exactly one Messages API request; does not authorize executing the response"
-WORKFLOW_PATH = ".github/workflows/live-proposal.yml"
+LABEL = ("PAID MODEL CALL APPROVAL REQUEST: one Messages API request under a supervised local procedure; "
+         "does not authorize executing the response")
+PROCEDURE_PATH = "docs/LIVE_CALL_PROCEDURE.md"
+PROPOSAL_PATH = "demo/live/approval.json"  # the committed, unapproved proposal; the only file allowed to change after
 SDK_PIN = "anthropic==2.8.0"
+_APPROVAL_ID = re.compile(r"^[0-9a-f]{32}$")
+# Fail closed on anything not committed: modified, staged, untracked and ignored files (venv, outputs, caches).
+STRICT_STATUS = ("status", "--porcelain=v1", "--untracked-files=all", "--ignored=matching")
 
 
 class ApprovalError(Exception):
@@ -52,7 +59,7 @@ def _bindings(request_path: Path) -> dict:
     est = pricing.estimate_call(a.model, len(pb), a.max_tokens)
     if not pricing.within_cap(est, a.cost_cap_cents):
         raise ApprovalError("estimate_exceeds_request_cap")
-    wf = PROJECT_ROOT / WORKFLOW_PATH
+    proc = PROJECT_ROOT / PROCEDURE_PATH
     return {
         "request_path": str(Path(request_path).resolve().relative_to(PROJECT_ROOT))
         if Path(request_path).resolve().is_relative_to(PROJECT_ROOT) else str(request_path),
@@ -68,8 +75,8 @@ def _bindings(request_path: Path) -> dict:
         "tools": None, "system_prompt": None, "fallbacks": None, "max_retries": 0, "requests": 1,
         "cost_cap_usd": f"{a.cost_cap_cents / 100:.2f}", "estimate": est,
         "adapter_version": ADAPTER_VERSION, "sdk": SDK_PIN,
-        "workflow_path": WORKFLOW_PATH,
-        "workflow_sha256": hashlib.sha256(wf.read_bytes()).hexdigest() if wf.is_file() else None,
+        "procedure_path": PROCEDURE_PATH,
+        "procedure_sha256": hashlib.sha256(proc.read_bytes()).hexdigest() if proc.is_file() else None,
     }
 
 
@@ -79,21 +86,29 @@ def prepare(request_path: Path, out_path: Path, *, console_spend_limit_usd: str 
         raise ApprovalError("approval_packet_exists")
     try:
         commit = _git("rev-parse", "--verify", "HEAD^{commit}").stdout.decode().strip()
-        dirty = bool(_git("status", "--porcelain=v1", "--untracked-files=normal").stdout)
+        dirty = bool(_git(*STRICT_STATUS).stdout)
     except GitError:
         raise ApprovalError("project_commit_unavailable") from None
     if dirty:
         raise ApprovalError("project_tree_dirty")
     packet = {
         "schema_version": SCHEMA, "label": LABEL, "status": "awaiting_operator_approval",
-        "code_commit": commit, "binds": _bindings(request_path),
+        "approval_id": secrets.token_hex(16), "code_commit": commit, "binds": _bindings(request_path),
+        "single_use": {
+            "mechanism": "local ledger: an atomic exclusive marker named after approval_id, created outside the "
+                         "checkout immediately before the request is sent",
+            "scope": "this operator machine and ledger directory only; NOT enforced globally",
+            "procedure": "one operator, one machine, one attempt. Any second attempt, including after a timeout, "
+                         "crash or otherwise ambiguous outcome, needs a newly prepared packet (new approval_id) and "
+                         "fresh explicit operator approval.",
+        },
         "spending_limit": {
             "per_request_cap_usd": None, "recommended_console_workspace_spend_limit_usd": console_spend_limit_usd,
             "note": "Set an independent workspace spend limit in the Claude Console before approving "
                     "(platform.claude.com/settings/spend-limits); this code cannot verify that it is set.",
             "source": pricing.SOURCES["spend_limits"]},
         "what_approval_authorizes": [
-            "exactly one Messages API request with the bound parameters, from the bound commit and workflow revision",
+            "one Messages API request with the bound parameters, from the bound commit, following the bound procedure",
             "recording the bounded response and writing a review packet",
         ],
         "what_approval_does_not_authorize": [
@@ -103,8 +118,8 @@ def prepare(request_path: Path, out_path: Path, *, console_spend_limit_usd: str 
         ],
         "not_verified_before_approval": [
             "account access, credits and the model's availability to this account",
-            "that the GitHub Environment approval gate exists and works for this private repository",
-            "actual charges (the estimate is not a bound)",
+            "actual charges: the estimate and the request cap are not provider-side limits",
+            "that the Console spend limit is set",
         ],
         "operator_approval": {"approved": False, "approved_by": None, "approved_at": None, "statement": None},
     }
@@ -120,7 +135,8 @@ def verify(packet_path: Path, request_path: Path) -> dict:
         packet = json.loads(Path(packet_path).read_text())
     except (OSError, ValueError):
         raise ApprovalError("approval_packet_unreadable") from None
-    if packet.get("schema_version") != SCHEMA or packet.get("label") != LABEL:
+    if packet.get("schema_version") != SCHEMA or packet.get("label") != LABEL \
+            or not _APPROVAL_ID.match(str(packet.get("approval_id") or "")):
         raise ApprovalError("approval_packet_malformed")
     approval = packet.get("operator_approval") or {}
     if approval.get("approved") is not True or not approval.get("approved_by") or not approval.get("approved_at"):
@@ -137,11 +153,9 @@ def verify(packet_path: Path, request_path: Path) -> dict:
                 raise ApprovalError("code_commit_not_ancestor")
             changed = set(filter(None, _git("diff", "--name-only", packet["code_commit"], head).stdout.decode()
                                  .splitlines()))
-            resolved = Path(packet_path).resolve()
-            allowed = {str(resolved.relative_to(PROJECT_ROOT))} if resolved.is_relative_to(PROJECT_ROOT) else set()
-            if changed - allowed:
+            if changed - {PROPOSAL_PATH}:
                 raise ApprovalError("code_changed_since_approval")
-        if _git("status", "--porcelain=v1", "--untracked-files=no").stdout:
+        if _git(*STRICT_STATUS).stdout:
             raise ApprovalError("project_tree_dirty")
     except GitError:
         raise ApprovalError("code_commit_unverifiable") from None

@@ -58,6 +58,27 @@ def classify_api_error(error: Exception) -> str:
     return f"adapter_unexpected:{type(error).__name__}"
 
 
+# Provider error fields that may be stored. Messages and bodies are never stored (they can echo request content or
+# credentials); only these fixed vocabulary values are kept.
+SAFE_ERROR_TYPES = frozenset({"invalid_request_error", "authentication_error", "permission_error", "not_found_error",
+                              "request_too_large", "rate_limit_error", "api_error", "overloaded_error",
+                              "billing_error", "timeout_error"})
+SAFE_ERROR_CODES = frozenset({"enforced_spend_limit_reached", "ramp_limit_exceeded"})
+
+
+def safe_error_record(error: Exception) -> dict:
+    body = getattr(error, "body", None)
+    err = (body or {}).get("error") if isinstance(body, dict) else None
+    err = err if isinstance(err, dict) else {}
+    etype = err.get("type") if err.get("type") in SAFE_ERROR_TYPES else None
+    details = err.get("details") if isinstance(err.get("details"), dict) else {}
+    code = details.get("error_code") if details.get("error_code") in SAFE_ERROR_CODES else None
+    status = getattr(error, "status_code", None)
+    return {"class": type(error).__name__[:64], "status_code": status if isinstance(status, int) else None,
+            "provider_error_type": etype, "provider_error_code": code,
+            "note": "provider and client messages are not recorded"}
+
+
 def _usage_dict(usage) -> dict:
     if usage is None:
         return {}
@@ -69,6 +90,8 @@ def _usage_dict(usage) -> dict:
 class LiveAdapter:
     def __init__(self, spec, client_factory=default_client_factory):
         self.spec, self.client_factory, self.calls = spec, client_factory, 0
+        # Set by the runner to the single-use ledger claim; called immediately before the request is sent.
+        self.before_send = None
         self.record = {"adapter_version": ADAPTER_VERSION, "sdk": "anthropic", "sdk_version": _sdk_version(),
                        "requested_model": spec.model, "authorized_response_models": list(spec.authorized_response_models),
                        "max_tokens": spec.max_tokens, "effort": spec.effort, "timeout_s": spec.timeout_s,
@@ -93,6 +116,13 @@ class LiveAdapter:
         self.record["pre_call_estimate"] = est
         if not pricing.within_cap(est, self.spec.cost_cap_cents):
             self._fail("cost_estimate_exceeds_cap", "pre-call estimate exceeds the request cost cap; no request sent")
+        if self.before_send is None:
+            self._fail("single_use_claim_missing", "no single-use claim configured; refusing to send")
+        try:
+            self.record["single_use_marker"] = self.before_send()
+        except Exception as error:
+            self._fail("approval_already_used" if type(error).__name__ == "AlreadyUsed" else "single_use_claim_failed",
+                       "approval could not be claimed; no request sent")
         client = self.client_factory(self.spec)
         try:
             self.record["request_sent"] = True
@@ -100,8 +130,7 @@ class LiveAdapter:
                                               output_config={"effort": self.spec.effort},
                                               messages=[{"role": "user", "content": prompt}])
         except Exception as error:  # every failure is reported; nothing is retried
-            self.record["error"] = {"class": type(error).__name__, "status_code": getattr(error, "status_code", None),
-                                    "message": str(getattr(error, "message", error))[:200]}
+            self.record["error"] = safe_error_record(error)
             self._fail(classify_api_error(error), "provider call failed")
         usage = _usage_dict(getattr(response, "usage", None))
         stop = getattr(response, "stop_reason", None)

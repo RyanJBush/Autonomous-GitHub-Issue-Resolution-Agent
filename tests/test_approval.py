@@ -52,8 +52,9 @@ def test_prepare_binds_everything_and_starts_unapproved(fake_git, live_req, tmp_
     pkt = approval.prepare(live_req, out)
     b = pkt["binds"]
     assert pkt["status"] == "awaiting_operator_approval" and pkt["operator_approval"]["approved"] is False
-    assert pkt["code_commit"] == COMMIT and b["workflow_path"] == ".github/workflows/live-proposal.yml"
-    assert b["workflow_sha256"] and b["model"] == "claude-sonnet-5-5" and b["requests"] == 1
+    assert pkt["code_commit"] == COMMIT and b["procedure_path"] == "docs/LIVE_CALL_PROCEDURE.md"
+    assert b["procedure_sha256"] and b["model"] == "claude-sonnet-5-5" and b["requests"] == 1
+    assert len(pkt["approval_id"]) == 32 and "NOT enforced globally" in pkt["single_use"]["scope"]
     assert b["max_retries"] == 0 and b["tools"] is None and b["fallbacks"] is None
     assert b["estimate"]["label"].startswith("ESTIMATE") and b["cost_cap_usd"] == "0.25"
     assert "executing the response or any code derived from it" in pkt["what_approval_does_not_authorize"]
@@ -70,7 +71,7 @@ def test_unapproved_packet_refused(fake_git, live_req, tmp_path):
 
 
 @pytest.mark.parametrize("field,value", [("model", "claude-opus-5-5"), ("max_tokens", 4000),
-                                         ("workflow_sha256", "0" * 64), ("prompt_sha256", "0" * 64),
+                                         ("procedure_sha256", "0" * 64), ("prompt_sha256", "0" * 64),
                                          ("cost_cap_usd", "9.99")])
 def test_any_binding_change_refused(fake_git, live_req, tmp_path, field, value):
     out = tmp_path / "approval.json"
@@ -104,7 +105,9 @@ def test_code_commit_rules(fake_git, live_req, tmp_path):
     with pytest.raises(approval.ApprovalError) as info:
         approval.verify(out, live_req)
     assert info.value.code == "code_commit_not_ancestor"
-    fake_git["ancestor"], fake_git["changed"] = 0, b"ira/live_adapter.py\n"
+    fake_git["ancestor"], fake_git["changed"] = 0, b"demo/live/approval.json\n"
+    assert approval.verify(out, live_req)  # only the committed proposal changed: allowed
+    fake_git["changed"] = b"demo/live/approval.json\nira/live_adapter.py\n"
     with pytest.raises(approval.ApprovalError) as info:
         approval.verify(out, live_req)
     assert info.value.code == "code_changed_since_approval"
@@ -165,3 +168,57 @@ def test_committed_first_call_request_is_valid_and_bounded():
     a = req.adapter
     assert (a.kind, a.model, a.max_tokens, a.effort, a.cost_cap_cents) == ("live_model", "claude-sonnet-5-5", 8000,
                                                                            "medium", 25)
+
+
+
+@pytest.mark.parametrize("status", [b"?? notes.txt\n", b"!! .venv/\n", b"!! ira/__pycache__/\n", b" M README.md\n"])
+def test_untracked_and_ignored_files_fail_closed(fake_git, live_req, tmp_path, status):
+    out = tmp_path / "approval.json"
+    approval.prepare(live_req, out)
+    approve(out)
+    fake_git["dirty"] = status
+    with pytest.raises(approval.ApprovalError) as info:
+        approval.verify(out, live_req)
+    assert info.value.code == "project_tree_dirty"
+
+
+def test_strict_status_command_includes_untracked_and_ignored():
+    assert approval.STRICT_STATUS == ("status", "--porcelain=v1", "--untracked-files=all", "--ignored=matching")
+
+
+def test_malformed_approval_id_refused(fake_git, live_req, tmp_path):
+    out = tmp_path / "approval.json"
+    approval.prepare(live_req, out)
+    approve(out)
+    pkt = json.loads(out.read_text())
+    pkt["approval_id"] = "reused"
+    out.write_text(json.dumps(pkt))
+    with pytest.raises(approval.ApprovalError) as info:
+        approval.verify(out, live_req)
+    assert info.value.code == "approval_packet_malformed"
+
+
+def test_cli_refuses_out_inside_checkout_and_used_approvals(fake_git, live_req, tmp_path, no_adapter, capsys):
+    from ira.single_use import SingleUseLedger
+    out = tmp_path / "approval.json"
+    pkt = approval.prepare(live_req, out)
+    approve(out)
+    inside = ROOT / "out" / "live-should-not-exist"
+    assert cli.main(["run", "--live", "--request", str(live_req), "--out", str(inside),
+                     "--approval-packet", str(out), "--spent-ledger", str(tmp_path / "l")]) == 2
+    assert "outside the checkout" in capsys.readouterr().err and not inside.exists()
+    ledger = SingleUseLedger(tmp_path / "l")
+    ledger.claim(pkt["approval_id"], request_sha256="0" * 64, run_id="earlier")
+    assert cli.main(["run", "--live", "--request", str(live_req), "--out", str(tmp_path / "runs"),
+                     "--approval-packet", str(out), "--spent-ledger", str(tmp_path / "l")]) == 2
+    assert "approval_already_used" in capsys.readouterr().err
+    assert no_adapter == [] and not (tmp_path / "runs").exists()
+
+
+def test_no_live_workflow_and_committed_proposal_is_unapproved():
+    assert not (ROOT / ".github/workflows/live-proposal.yml").exists()
+    proposal = ROOT / approval.PROPOSAL_PATH
+    if proposal.exists():
+        pkt = json.loads(proposal.read_text())
+        assert pkt["operator_approval"]["approved"] is False and pkt["status"] == "awaiting_operator_approval"
+        assert len(pkt["approval_id"]) == 32 and pkt["binds"]["procedure_path"] == approval.PROCEDURE_PATH

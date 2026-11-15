@@ -25,6 +25,8 @@ def main(argv=None) -> int:
                    help="trusted synthetic execution in Docker (allowlisted fixtures only)")
     r.add_argument("--live", action="store_true", help="one paid model request; requires --approval-packet")
     r.add_argument("--approval-packet", help="operator-approved packet from prepare-live-approval")
+    r.add_argument("--spent-ledger", help="single-use ledger directory outside the checkout "
+                                          "(default: $XDG_STATE_HOME or ~/.local/state, then ira/live-approvals)")
     a = sub.add_parser("prepare-live-approval", help="write the approval packet for one live request (no network)")
     a.add_argument("--request", required=True)
     a.add_argument("--out", required=True)
@@ -71,16 +73,26 @@ def main(argv=None) -> int:
             if not args.approval_packet:
                 print("request rejected: --live requires --approval-packet", file=sys.stderr)
                 return 2
+            from pathlib import Path as _P
+            from .demo_repo import PROJECT_ROOT
+            from .single_use import LedgerError, SingleUseLedger, default_ledger_dir
+            if _P(args.out).resolve().is_relative_to(PROJECT_ROOT):
+                print("live call refused before any request: --out must be outside the checkout", file=sys.stderr)
+                return 2
             try:
                 live_approval = approval.verify(args.approval_packet, args.request)
-            except (approval.ApprovalError, RequestError) as error:
+                ledger = SingleUseLedger(args.spent_ledger or default_ledger_dir())
+                if ledger.is_used(live_approval["approval_id"]):
+                    raise approval.ApprovalError("approval_already_used")
+            except (approval.ApprovalError, RequestError, LedgerError) as error:
                 print(f"live call refused before any request: {error}", file=sys.stderr)
                 return 2
         if args.execute:
             from .synthetic_exec import DockerExecutor
             executor = DockerExecutor(demo_repo.load_pinned())
         try:
-            pkt, run_dir = runner.execute(args.request, args.out, executor=executor, live_approval=live_approval)
+            pkt, run_dir = runner.execute(args.request, args.out, executor=executor, live_approval=live_approval,
+                                          single_use=ledger if args.live else None)
         except RequestError as error:
             print(f"request rejected: {error}", file=sys.stderr)
             return 2

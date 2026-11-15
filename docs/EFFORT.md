@@ -23,6 +23,9 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 | 2026-11-15 | Claude | M3 design and verification plan, docs only (04:01:47Z–04:03:07Z, to commit) | 1.3 min | +3 min handoff |
 | 2026-11-15 | Codex | Review of M3 design 61e823b; pricing and token-counting documentation checked | unmeasured | unmeasured |
 | 2026-11-15 | Claude | M3 offline adapter, replay, review gate, approval packet tooling and tests (04:06:25Z–04:20:06Z, to implementation commit; the approval-packet commit and handoff are reported in the handoff, because the packet binds this commit) | 13.7 min | +5 min handoff |
+| 2026-11-15 | Claude | M3 approval packet, offline dry run, push and CI check (04:20:06Z–04:23:36Z; carried from Handoff 009, not committed then because the packet bound the prior commit) | 3.5 min | — |
+| 2026-11-15 | Codex | M3 review at 9caa90f (exception-text injection, environments check) | unmeasured | unmeasured |
+| 2026-11-15 | Claude | M3 review fixes: safe error records, local single-use ledger, local procedure, strict clean tree (04:27:39Z–04:32:10Z, to fix commit; packet commit and handoff reported in the handoff) | 4.5 min | +5 min handoff |
 
-Running totals: Claude measured ≈ 65.7 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7); Claude estimated additions ≈ 39 min;
+Running totals: Claude measured ≈ 73.7 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7 + 3.5 + 4.5); Claude estimated additions ≈ 44 min;
 Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus unmeasured review and reasoning time.

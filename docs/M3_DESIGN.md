@@ -25,7 +25,22 @@ Status: **offline implementation complete on `m3-live-adapter`; no model has bee
    an approved replay that passes the trusted tests reaches `evaluated_awaiting_human_review`.
 7. **Offline tests only**, enforced by an autouse fixture that blocks IPv4/IPv6 connections.
 
-The sections below are the reviewed design. Where they say "Opus", "deterministic" or "bound", read the amendments.
+## Second review round (Codex findings at 9caa90f; applied)
+
+1. **No provider text in artifacts.** Exception messages and bodies are never stored. The packet keeps the exception
+   class, status code, and only allowlisted provider error types and codes.
+2. **Single use is local, not global.** An atomic `<approval_id>.spent` marker is created outside the checkout
+   immediately before the request is sent (`ira/single_use.py`). Concurrent and repeated attempts on that machine and
+   ledger cannot both proceed, and a timeout consumes the approval. Other machines and a deleted ledger are covered
+   only by the supervised procedure, which requires a new packet and fresh approval for any second attempt.
+3. **No GitHub Actions path.** The repository has no Environments, `workflow_dispatch` needs the default branch, and
+   required reviewers on a private repository depend on the plan. The workflow was removed. The one call follows
+   `docs/LIVE_CALL_PROCEDURE.md` (operator-controlled local Linux run), whose sha256 the packet binds.
+4. **Clean tree fails closed** on modified, staged, untracked and ignored files, so the venv and all outputs live
+   outside the checkout; `--out` inside the checkout is refused for live runs.
+
+The sections below are the reviewed design. Where they say "Opus", "deterministic", "bound", "exactly one request",
+"GitHub Actions" or "workflow", read the amendments above: sections 2 (option A) and 4 are superseded.
 
 ## 0. Summary
 

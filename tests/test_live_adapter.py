@@ -13,6 +13,7 @@ from ira import runner
 from ira.evaluate import make_request
 from ira.live_adapter import LiveAdapter, default_client_factory
 from ira.models import RequestError, load_request
+from ira.single_use import SingleUseLedger
 
 GOOD_TEXT = (ROOT / "fixtures/responses/good_trim_collapse.json").read_text()
 LIVE = {"kind": "live_model", "model": "claude-sonnet-5-5", "max_tokens": 8000, "effort": "medium", "timeout_s": 120,
@@ -50,13 +51,16 @@ def live_request(tmp_path, repo, run_id="live-test", **adapter):
     return path
 
 
-def approval_for(path):
+def approval_for(path, approval_id=None):
     return {"operator_approval": {"approved": True, "approved_by": "test", "approved_at": "2026-11-15T00:00:00Z"},
+            "approval_id": approval_id or hashlib.sha256(str(path).encode()).hexdigest()[:32],
             "binds": {"request_sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}}
 
 
-def run_live(tmp_path, repo, result, *, run_id="live-test", executor=None, **adapter):
+def run_live(tmp_path, repo, result, *, run_id="live-test", executor=None, ledger=None, approval_id=None, **adapter):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     path = live_request(tmp_path, repo, run_id, **adapter)
+    ledger = ledger or SingleUseLedger(tmp_path / "ledger")
     client = FakeClient(result)
     made = []
 
@@ -64,7 +68,7 @@ def run_live(tmp_path, repo, result, *, run_id="live-test", executor=None, **ada
         a = LiveAdapter(spec, client_factory=lambda s: (made.append(s), client)[1])
         return a
     pkt, d = runner.execute(path, tmp_path / "out", adapter_factory=factory, work_root=tmp_path / "w",
-                            executor=executor, live_approval=approval_for(path))
+                            executor=executor, live_approval=approval_for(path, approval_id), single_use=ledger)
     return pkt, d, client
 
 
@@ -178,7 +182,7 @@ def test_live_call_refused_without_verified_approval(built_repo, tmp_path, appro
     built = []
     with pytest.raises(RequestError):
         runner.execute(path, tmp_path / "out", work_root=tmp_path / "w", live_approval=approval,
-                       adapter_factory=lambda s: built.append(s))
+                       adapter_factory=lambda s: built.append(s), single_use=SingleUseLedger(tmp_path / "l"))
     assert built == [] and not (tmp_path / "out" / "live-test").exists()
 
 
@@ -193,6 +197,11 @@ def test_api_key_never_recorded(built_repo, tmp_path, monkeypatch):
 def test_one_request_per_adapter_and_client_configuration(monkeypatch):
     spec = load_request(json.dumps({**json.loads((ROOT / "demo/live/request.json").read_text())}).encode()).adapter
     a = LiveAdapter(spec, client_factory=lambda s: FakeClient(message()))
+    with pytest.raises(Exception) as info:
+        a.propose("p", 32768)  # no single-use claim configured: refuses before sending
+    assert info.value.code == "single_use_claim_missing"
+    a = LiveAdapter(spec, client_factory=lambda s: FakeClient(message()))
+    a.before_send = lambda: "marker"
     a.propose("p", 32768)
     with pytest.raises(Exception):
         a.propose("p", 32768)
@@ -214,5 +223,92 @@ def test_real_sdk_client_cannot_reach_network_in_tests(built_repo, tmp_path, mon
     """With the real client factory and a dummy key, the request fails offline as api_connection_error."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-dummy-offline")
     path = live_request(tmp_path, built_repo, run_id="real-client", timeout_s=10)
-    pkt, _ = runner.execute(path, tmp_path / "out", work_root=tmp_path / "w", live_approval=approval_for(path))
+    pkt, _ = runner.execute(path, tmp_path / "out", work_root=tmp_path / "w", live_approval=approval_for(path),
+                            single_use=SingleUseLedger(tmp_path / "ledger"))
     assert (pkt["terminal_status"], pkt["status_reason"]) == ("adapter_error", "api_connection_error")
+
+
+
+# --------------------------------------------------------------------------- finding 1: no provider text in artifacts
+SENTINEL = "FAKE_SECRET_SENTINEL_123"
+
+
+@pytest.mark.parametrize("error", [
+    _status(anthropic.AuthenticationError, 401, {"error": {"type": "authentication_error", "message": SENTINEL}},
+            msg=f"invalid x-api-key {SENTINEL}"),
+    _status(anthropic.BadRequestError, 400, {"error": {"type": SENTINEL, "details": {"error_code": SENTINEL}}},
+            msg=f"bad request echoing {SENTINEL}"),
+    _status(anthropic.InternalServerError, 500, SENTINEL, msg=SENTINEL),
+    anthropic.APIConnectionError(request=REQ, message=f"proxy said {SENTINEL}"),
+    RuntimeError(f"client blew up with {SENTINEL}"),
+])
+def test_exception_text_never_reaches_durable_artifacts(built_repo, tmp_path, error):
+    pkt, d, _ = run_live(tmp_path, built_repo, error)
+    assert pkt["terminal_status"] == "adapter_error"
+    rec = pkt["adapter"]["live"]["error"]
+    assert set(rec) == {"class", "status_code", "provider_error_type", "provider_error_code", "note"}
+    for f in [p for p in (tmp_path / "out").rglob("*") if p.is_file()]:
+        assert SENTINEL not in f.read_text(errors="replace"), f
+    assert SENTINEL not in json.dumps(pkt["trace"]) and SENTINEL not in json.dumps(pkt)
+
+
+def test_safe_provider_codes_are_kept(built_repo, tmp_path):
+    err = _status(anthropic.RateLimitError, 429, {"error": {"type": "rate_limit_error",
+                                                            "details": {"error_code": "enforced_spend_limit_reached"}}})
+    pkt, _, _ = run_live(tmp_path, built_repo, err)
+    rec = pkt["adapter"]["live"]["error"]
+    assert (rec["status_code"], rec["provider_error_type"], rec["provider_error_code"]) == (
+        429, "rate_limit_error", "enforced_spend_limit_reached")
+
+
+# --------------------------------------------------------------------------- finding 2: local single use
+def test_approval_cannot_be_reused_on_this_machine(built_repo, tmp_path):
+    ledger = SingleUseLedger(tmp_path / "ledger")
+    pkt, _, c1 = run_live(tmp_path / "a", built_repo, message(), ledger=ledger, approval_id="1" * 32)
+    assert pkt["adapter"]["live"]["single_use_marker"] == "1" * 32 + ".spent" and len(c1.calls) == 1
+    pkt, _, c2 = run_live(tmp_path / "b", built_repo, message(), ledger=ledger, approval_id="1" * 32,
+                          run_id="live-again")
+    assert (pkt["terminal_status"], pkt["status_reason"]) == ("adapter_error", "approval_already_used")
+    assert c2.calls == [] and pkt["adapter"]["live"]["request_sent"] is False
+
+
+def test_timeout_consumes_the_approval(built_repo, tmp_path):
+    ledger = SingleUseLedger(tmp_path / "ledger")
+    pkt, _, _ = run_live(tmp_path / "a", built_repo, anthropic.APITimeoutError(request=REQ), ledger=ledger,
+                         approval_id="2" * 32)
+    assert pkt["status_reason"] == "api_timeout" and ledger.is_used("2" * 32)
+    pkt, _, c = run_live(tmp_path / "b", built_repo, message(), ledger=ledger, approval_id="2" * 32, run_id="retry")
+    assert pkt["status_reason"] == "approval_already_used" and c.calls == []
+
+
+def test_refusals_before_sending_do_not_consume(built_repo, tmp_path):
+    ledger = SingleUseLedger(tmp_path / "ledger")
+    pkt, _, c = run_live(tmp_path / "a", built_repo, message(), ledger=ledger, approval_id="3" * 32, cost_cap_cents=1)
+    assert pkt["status_reason"] == "cost_estimate_exceeds_cap" and not ledger.is_used("3" * 32) and c.calls == []
+
+
+def _claim(args):
+    directory, approval_id = args
+    from ira.single_use import AlreadyUsed, SingleUseLedger as L
+    try:
+        L(directory).claim(approval_id, request_sha256="0" * 64, run_id="r")
+        return "claimed"
+    except AlreadyUsed:
+        return "refused"
+
+
+def test_concurrent_claims_admit_exactly_one(tmp_path):
+    import multiprocessing
+    ctx = multiprocessing.get_context("fork")
+    with ctx.Pool(8) as pool:
+        results = pool.map(_claim, [(str(tmp_path / "ledger"), "4" * 32)] * 16)
+    assert results.count("claimed") == 1 and results.count("refused") == 15
+
+
+def test_ledger_must_be_outside_checkout_and_live_needs_one(built_repo, tmp_path):
+    from ira.single_use import LedgerError
+    with pytest.raises(LedgerError):
+        SingleUseLedger(ROOT / "out" / "ledger")
+    path = live_request(tmp_path, built_repo)
+    with pytest.raises(RequestError):
+        runner.execute(path, tmp_path / "out", work_root=tmp_path / "w", live_approval=approval_for(path))

@@ -3,7 +3,7 @@
 A supervised, bounded MVP: one model proposes one patch for one small issue in one Python file of an explicitly
 synthetic demonstration repository. Trusted code validates the proposal and writes a review packet for a human.
 
-**Status: Milestone 1 (offline validation core).** What exists and what does not:
+**Status: Milestone 2 (trusted synthetic execution) on branch `m2-execution`, pending Codex review.** What exists and what does not:
 
 | Capability | Milestone 1 |
 |---|---|
@@ -12,10 +12,10 @@ synthetic demonstration repository. Trusted code validates the proposal and writ
 | Reproducible synthetic demo repository and independent base verification | Implemented and tested |
 | Scratch apply + confirmation with controlled git configuration | Implemented and tested (not a sandbox) |
 | Review packet (JSON + escaped Markdown + manifest) | Implemented and tested |
-| Synthetic fixture adapter and 74-case offline evaluation | Implemented; **all fixtures are hand-written, no model is called** |
+| Synthetic fixture adapter and 82-case evaluation (offline and `--execute`) | Implemented; **all fixtures are hand-written, no model is called** |
 | Live model adapter | **Not implemented** (Milestone 3, needs operator approval for any paid call) |
-| Execution boundary / sandbox | **Not implemented or verified**; every accepted patch stops at `blocked_boundary_unverified` |
-| Trusted test execution (baseline and candidate) | **Not run** (Milestone 2) |
+| Docker executor for trusted synthetic checks | Implemented (`--execute`): byte-bound authorization, probe, per-container config checks, caps, timeout, verified cleanup. **Not verified for model-generated code**; see [docs/BOUNDARY.md](docs/BOUNDARY.md) |
+| Trusted test execution (baseline and candidate) | Runs only for allowlisted synthetic fixtures with `--execute`; without it, accepted patches stop at `blocked_boundary_unverified` |
 | Hosted CI | Workflow present; see the Actions tab for observed runs — a workflow file is not evidence of a pass |
 | Draft PR creation | Not implemented; requires explicit operator approval. Never merges. |
 
@@ -57,12 +57,15 @@ secret-redaction guarantee.
 ```
 request (operator) -> trusted-test identity -> base verification -> prompt (issue + one file only)
   -> one adapter call -> strict JSON -> base-commit echo -> patch policy -> scratch apply + confirm
-  -> execution gate (M1: always refuses) -> packet
+  -> offline: execution gate refuses -> packet
+  -> --execute: byte-bound authorization -> probe -> baseline -> candidate (Docker) -> verdict -> packet
 ```
 
-Terminal statuses are the eleven in contract item 7. Milestone 1 can emit `blocked_boundary_unverified`,
-`adapter_error`, `rejected_schema`, `cannot_propose`, `rejected_policy`, `apply_failed` and `execution_error`
-(the last only for a failure in trusted code).
+Terminal statuses are the eleven in contract item 7. Offline mode can emit `blocked_boundary_unverified`,
+`adapter_error`, `rejected_schema`, `cannot_propose`, `rejected_policy`, `apply_failed` and `execution_error`. With
+`--execute`, also `base_test_did_not_fail`, `timeout`, `tests_failed` and `tests_passed_awaiting_human_review`;
+`execution_error` then also covers inconclusive container results (missing or malformed results, OOM, output cap,
+crash), with the stage and a specific reason. `tests_failed` means the expected tests actually reported failures.
 
 ## Run it
 
@@ -92,6 +95,26 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m ira verify-packet --dir out/runs/demo-good-001
 ```
 
+Trusted synthetic execution (Linux with a running Docker daemon; hand-written allowlisted fixtures only):
+
+```bash
+.venv/bin/python -m ira build-runner-image
+```
+
+```bash
+.venv/bin/python -m ira run --execute --request demo/request.example.json --out out/exec-runs
+```
+
+```bash
+.venv/bin/python -m ira eval --execute --out out/eval-exec
+```
+
+```bash
+IRA_REQUIRE_DOCKER=1 .venv/bin/python -m pytest -q
+```
+
+Without `IRA_REQUIRE_DOCKER=1`, the Docker tests skip when Docker or the runner image is unavailable.
+
 `run` writes `out/runs/<run_id>/{packet.json,review.md,manifest.json}` and refuses to reuse a run id. Check
 `terminal_status` in its output; exit 0 alone says nothing about the patch.
 
@@ -107,9 +130,13 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 | `ira/prompt.py` | Prompt template (`ira.prompt.v1`) and its hash |
 | `ira/adapters.py` | Synthetic fixture adapter |
 | `ira/packet.py`, `ira/sanitize.py` | Review packet and escaping of untrusted text |
-| `ira/runner.py`, `ira/evaluate.py`, `ira/cli.py` | Pipeline, offline evaluation, command line |
+| `ira/runner.py`, `ira/evaluate.py`, `ira/cli.py` | Pipeline, evaluation, command line |
+| `ira/authorize.py` | Byte-bound authorization of synthetic execution against `runner/synthetic_allowlist.json` |
+| `ira/dockercmd.py`, `ira/execution.py` | Fixed-argv docker CLI; tree staging, container config checks, caps, timeout, cleanup |
+| `ira/synthetic_exec.py`, `ira/verdict.py` | Probe, baseline and candidate orchestration; verdict and probe rules |
+| `ira/imagebuild.py`, `runner/` | Pinned runner image inputs, in-container wrapper and probe |
 | `demo/target/` | Source of the synthetic demo repository (built reproducibly; commit `eb455af5…`) |
-| `demo/trusted_tests/` | Trusted issue test, pinned by hash; not executed in Milestone 1 |
+| `demo/trusted_tests/` | Trusted issue test, pinned by hash; executed only in `--execute` mode |
 | `fixtures/` | Synthetic responses generated by `tools/make_fixtures.py` (drift-checked by the tests) |
 
 ## Reuse and attribution

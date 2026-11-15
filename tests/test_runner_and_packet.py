@@ -40,7 +40,8 @@ def test_packet_complete_and_consistent(eval_out, case):
     assert p["terminal_status"] in {s.value for s in M1_REACHABLE}
     assert p["human_review"] == {"required": True, "pr_creation_authorized": False, "merge_authorized": False,
                                  "note": p["human_review"]["note"]}
-    assert p["execution"]["candidate_executed"] is False and p["execution"]["boundary_verified"] is False
+    assert p["execution"]["candidate_executed"] is False and p["execution"]["mode"] == "offline"
+    assert p["execution"]["verified_for_model_generated_code"] is False
     assert p["tests"]["baseline"] is None and p["tests"]["candidate"] is None
     req_bytes = (out / "requests" / f"{case}.json").read_bytes()
     assert p["request"]["sha256"] == hashlib.sha256(req_bytes).hexdigest()

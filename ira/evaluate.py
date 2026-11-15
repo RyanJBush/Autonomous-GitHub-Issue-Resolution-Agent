@@ -33,12 +33,12 @@ def make_request(case_id: str, repo_path: str, run_id: str, issue_variant: str =
                              "max_changed_lines": caps.MAX_CHANGED_LINES},
         "attempts": 1,
         "trusted_test": {k: pinned["trusted_test"][k] for k in ("path", "sha256", "test_ids")},
-        "execution": {"timeout_s": 60, "memory_mb": 256, "pids": 64, "cpus": 1},
+        "execution": {"timeout_s": 20, "memory_mb": 256, "pids": 64, "cpus": 1},
         "adapter": {"kind": "synthetic_fixture", "fixture_case": case_id},
     }
 
 
-def run_eval(out_dir: Path | str) -> dict:
+def run_eval(out_dir: Path | str, execute: bool = False, executor=None) -> dict:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=False)
     (out / "requests").mkdir()
@@ -46,23 +46,33 @@ def run_eval(out_dir: Path | str) -> dict:
     with tempfile.TemporaryDirectory(prefix="ira-eval-") as work:
         repo = Path(work) / "demo-repo"
         commit = demo_repo.build(repo)
+        if execute and executor is None:
+            from .synthetic_exec import DockerExecutor
+            executor = DockerExecutor(load_pinned())
         for case in load_cases():
             req_path = out / "requests" / f"{case['id']}.json"
             req_path.write_text(json.dumps(make_request(case["id"], repo, case["id"],
                                                         case.get("issue_variant", "clean")), indent=2) + "\n")
-            pkt, run_dir = runner.execute(req_path, out / "packets", work_root=Path(work) / "scratch")
-            match = (pkt["terminal_status"], pkt["status_reason"]) == (case["expected_status"], case["expected_reason"])
-            rows.append({"id": case["id"], "category": case["category"], "expected_status": case["expected_status"],
-                         "expected_reason": case["expected_reason"], "status": pkt["terminal_status"],
+            pkt, run_dir = runner.execute(req_path, out / "packets", work_root=Path(work) / "scratch",
+                                          executor=executor if execute else None)
+            want = ((case["expected_m2_status"], case["expected_m2_reason"]) if execute
+                    else (case["expected_status"], case["expected_reason"]))
+            match = (pkt["terminal_status"], pkt["status_reason"]) == want
+            rows.append({"id": case["id"], "category": case["category"], "expected_status": want[0],
+                         "expected_reason": want[1], "status": pkt["terminal_status"],
                          "reason": pkt["status_reason"], "match": match,
-                         "expected_m2_status": case.get("expected_m2_status"),
+                         "candidate_executed": pkt["execution"]["candidate_executed"],
                          "packet": str(run_dir.relative_to(out))})
-    summary = {"label": SYNTHETIC_LABEL, "demo_base_commit": commit, "total": len(rows),
+    summary = {"label": SYNTHETIC_LABEL, "mode": "trusted_synthetic_execution" if execute else "offline",
+               "demo_base_commit": commit, "total": len(rows),
                "matched": sum(r["match"] for r in rows), "cases": rows,
-               "not_verified_by_this_eval": ["live model adapter", "execution boundary / sandbox", "hosted CI",
-                                             "trusted test outcomes (not executed in Milestone 1)"]}
+               "not_verified_by_this_eval": (
+                   ["live model adapter", "isolation of model-generated code", "hosted CI (see the Actions run)"]
+                   if execute else ["live model adapter", "execution boundary / sandbox", "hosted CI",
+                                    "trusted test outcomes (offline mode does not execute tests)"])}
     (out / "eval-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-    lines = [f"# Evaluation summary ({SYNTHETIC_LABEL})", "", f"Demo base commit: `{commit}`",
+    lines = [f"# Evaluation summary ({SYNTHETIC_LABEL})", "", f"Mode: `{summary['mode']}`",
+             f"Demo base commit: `{commit}`",
              f"Matched {summary['matched']} / {summary['total']} cases.", "",
              "| case | category | expected | observed | match |", "|---|---|---|---|---|"]
     lines += [f"| {r['id']} | {r['category']} | {r['expected_status']} / {r['expected_reason']} | "

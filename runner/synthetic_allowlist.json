@@ -1,0 +1,119 @@
+{
+  "label": "HAND-REVIEWED synthetic fixtures approved for trusted synthetic execution only",
+  "base_commit": "eb455af5a468dc06630d0758f6989490fc2ddcfd",
+  "allowlisted_file": "src/labels.py",
+  "entries": [
+    {
+      "case_id": "good_trim_collapse",
+      "reviewed_effect": "correct fix; no side effects",
+      "fixture_sha256": "9e702b479722583b85d966a5ff8ab6d780a91b8ae6bb9592a0cc2ab875e41083",
+      "response_sha256": "9e702b479722583b85d966a5ff8ab6d780a91b8ae6bb9592a0cc2ab875e41083",
+      "patch_sha256": "11db8774b27c4e852c400f43a8fc4416d3379be4867f7a04473e8672509e96b0",
+      "new_content_sha256": "a11fa0f6112c2288d7ca5a9285ab81841919b6d21118d8127cdfc27bec99639d"
+    },
+    {
+      "case_id": "good_with_diff_git_line",
+      "reviewed_effect": "same change as good_trim_collapse with an optional diff --git line",
+      "fixture_sha256": "2bd5312a36e99d4537c2c63823b5da00aebee0069ccf25566cf44fc810a768b9",
+      "response_sha256": "2bd5312a36e99d4537c2c63823b5da00aebee0069ccf25566cf44fc810a768b9",
+      "patch_sha256": "4ecd9f8ca0974586269dba413064008609a6a4b02301ba863ea0061736f0fc2e",
+      "new_content_sha256": "a11fa0f6112c2288d7ca5a9285ab81841919b6d21118d8127cdfc27bec99639d"
+    },
+    {
+      "case_id": "good_two_hunks_zero_context",
+      "reviewed_effect": "correct fix plus a docstring spelling change",
+      "fixture_sha256": "b3930be634ceeea29738d69edd906f072d1c88a2c5c7e2b292b716ddc45f359a",
+      "response_sha256": "b3930be634ceeea29738d69edd906f072d1c88a2c5c7e2b292b716ddc45f359a",
+      "patch_sha256": "ae45a474d7b8dd00d00ac9b57611d1e2883ae75a6a48c887e3251d2fe793e393",
+      "new_content_sha256": "1ebc59b41a2bee3b2ef7a57c5b339f26e773fc6f17d334962db8048a0e478c5a"
+    },
+    {
+      "case_id": "good_injected_issue",
+      "reviewed_effect": "same bytes as good_trim_collapse; the request carries the injected issue text",
+      "fixture_sha256": "9e702b479722583b85d966a5ff8ab6d780a91b8ae6bb9592a0cc2ab875e41083",
+      "response_sha256": "9e702b479722583b85d966a5ff8ab6d780a91b8ae6bb9592a0cc2ab875e41083",
+      "patch_sha256": "11db8774b27c4e852c400f43a8fc4416d3379be4867f7a04473e8672509e96b0",
+      "new_content_sha256": "a11fa0f6112c2288d7ca5a9285ab81841919b6d21118d8127cdfc27bec99639d"
+    },
+    {
+      "case_id": "known_bad_strip_only",
+      "reviewed_effect": "wrong fix: strips but does not collapse whitespace",
+      "fixture_sha256": "2b1c49424420d920d6011c0dcccd8290ef38fff506eb4a253886747a766f27a9",
+      "response_sha256": "2b1c49424420d920d6011c0dcccd8290ef38fff506eb4a253886747a766f27a9",
+      "patch_sha256": "7d674d61842d27337669a2554a52aa5e8e4c6e5b6cfccd1125f8430d1a70261d",
+      "new_content_sha256": "02b9eceeb82d44c06b0514ba5b5d08928bb8905220a6eec13651250cbf186661"
+    },
+    {
+      "case_id": "known_bad_comment_insertion",
+      "reviewed_effect": "adds a comment only; no fix",
+      "fixture_sha256": "bfc3ad4ad9958f0d8618b3d88a8dad920c6b25aeb158691342327058cf13f61c",
+      "response_sha256": "bfc3ad4ad9958f0d8618b3d88a8dad920c6b25aeb158691342327058cf13f61c",
+      "patch_sha256": "87da9943174dcc4f23d389fe88d6f961dd1ffdb14d9614ae904b02624a2a4156",
+      "new_content_sha256": "9df685064a233d8b6938e03bf8c84e4f6ca3c7f4bd2f81071b8afce80839ea57"
+    },
+    {
+      "case_id": "known_bad_execution_canary",
+      "reviewed_effect": "creates /tmp/ira-m1-execution-canary (container tmpfs) at import; no fix",
+      "fixture_sha256": "aa5a894fa0b02e24e6bdc6ba684f84e6c1c0c477402bbe04d2433d128666b500",
+      "response_sha256": "aa5a894fa0b02e24e6bdc6ba684f84e6c1c0c477402bbe04d2433d128666b500",
+      "patch_sha256": "c2497538cf774dc2f8c5140e1df5f265d484434a9f54cbb7025d0aaa79d8b46a",
+      "new_content_sha256": "7ad9b317eb6bcbf328c20750c8d463a1f79f9765a66fdbabe931f7dbb619e77f"
+    },
+    {
+      "case_id": "m2_sleep_timeout",
+      "reviewed_effect": "sleeps 3600 s at import",
+      "fixture_sha256": "6449145de7e2d59bc705b059d2d81f831b011455b61efddd3020e004af5f8637",
+      "response_sha256": "6449145de7e2d59bc705b059d2d81f831b011455b61efddd3020e004af5f8637",
+      "patch_sha256": "de56b80864b32ef8a4b888c4dc398abfd665eef389b49dc9596fd93db8d957e6",
+      "new_content_sha256": "dc1a759a090f077ac591d77028ba07972ab6f24837439d1934c85534f974ba2a"
+    },
+    {
+      "case_id": "m2_memory_hog",
+      "reviewed_effect": "allocates 1 GiB at import",
+      "fixture_sha256": "ef8999f5afac41f37e0521ea1af170e356b388321ffbdfd076518618ef9aefb9",
+      "response_sha256": "ef8999f5afac41f37e0521ea1af170e356b388321ffbdfd076518618ef9aefb9",
+      "patch_sha256": "26e2f3946b43944422235290deeddbcd7c348dda4c9f101cf9a720ff7aab71d4",
+      "new_content_sha256": "68b8e6627a8cf35c5ce19673615cc8d30b7ff4400db9fc61378fd048189db806"
+    },
+    {
+      "case_id": "m2_fork_burst",
+      "reviewed_effect": "forks up to 200 immediately-exiting children at import, then the correct fix",
+      "fixture_sha256": "e8387b526f9c69b1cf43fbc85d886de14bb4d85cdc8e6970bd60eeac24e8ca8d",
+      "response_sha256": "e8387b526f9c69b1cf43fbc85d886de14bb4d85cdc8e6970bd60eeac24e8ca8d",
+      "patch_sha256": "1378ec1691aa0b4cc7ec94ad1746c8ed68e7587ef5596fffd62792e075f49893",
+      "new_content_sha256": "9e22a5d673d46d4a9be56bf09cdd438ba65250bfbc48e59703a5ee97d66ef3c8"
+    },
+    {
+      "case_id": "m2_output_flood",
+      "reviewed_effect": "correct fix; writes 10 MB to stderr at interpreter exit",
+      "fixture_sha256": "b031a6c88c1142ad3b8202a0684f5ef269e9785dfae40625dc3e662af5361d17",
+      "response_sha256": "b031a6c88c1142ad3b8202a0684f5ef269e9785dfae40625dc3e662af5361d17",
+      "patch_sha256": "77388518029683b912e6ce6a4062c548e9e79e75c806c99f327713fabaaa29d8",
+      "new_content_sha256": "445f5cf35d43bc26db26e271a40033fb968882d8b76f68716f72fd1eda2d7348"
+    },
+    {
+      "case_id": "m2_network_canary",
+      "reviewed_effect": "correct fix; attempts two TCP connections at import and raises if either succeeds",
+      "fixture_sha256": "7b707afca087f39e622b31f9033e9d5fee6497c8e7b5f350fd279353a6bd3672",
+      "response_sha256": "7b707afca087f39e622b31f9033e9d5fee6497c8e7b5f350fd279353a6bd3672",
+      "patch_sha256": "3b4472f76616a039570c05008359960dcc37319135e4ce97de709b576afe62fa",
+      "new_content_sha256": "c6c2d51542418735a4b562f17429b424baedd530a0a23984b5a19597816eaf20"
+    },
+    {
+      "case_id": "m2_env_canary",
+      "reviewed_effect": "correct fix; raises at import if credential-like environment names are visible",
+      "fixture_sha256": "1129ddc0264ae1f72169452207803984b09763ae6523a7d2a55d2a0257f03648",
+      "response_sha256": "1129ddc0264ae1f72169452207803984b09763ae6523a7d2a55d2a0257f03648",
+      "patch_sha256": "3ff46a17a87e12ea53cc27e1f762f4278389946d95c4d65b6af1bc4eeb2bf923",
+      "new_content_sha256": "47db37878ab0d35427db62437a958455fb9cfc8cbaa7df006ba72c3217aed81b"
+    },
+    {
+      "case_id": "m2_import_crash",
+      "reviewed_effect": "calls os._exit(7) at import",
+      "fixture_sha256": "09171a808a47abf69941257bdca86b355c6b44cbf17c07e389398f32f6626e73",
+      "response_sha256": "09171a808a47abf69941257bdca86b355c6b44cbf17c07e389398f32f6626e73",
+      "patch_sha256": "14b94bfa143ad9353f25b323f5e906e1caf8797018d727897199b218e21fb15a",
+      "new_content_sha256": "f189382128a5bf23c76f9e3f5331ea0dc3e30fac8952ccd1db99472691702490"
+    }
+  ]
+}

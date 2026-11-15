@@ -21,5 +21,20 @@
       "test_issue.py::test_whitespace_only_label_is_invalid"
     ],
     "executed_in_m1": false
+  },
+  "runner": {
+    "files": {
+      "runner/Dockerfile": "c4f4f9a041172c3ec8263447d209eea83c3c60b679d46c7f56f23573c021318e",
+      "runner/requirements.lock": "e73aa742858fe8789f50fc4a0fbf0988bf6fb1444a0fac42f519e232b4e61eb0",
+      "runner/pytest.ini": "799b4f401f5a405ef5af00cbf64b83f47a0a542fcbdd09cccf114b49b0a34400",
+      "runner/run_tests.py": "c01292d6a8ee16ff6c213ddb3523d75f22ab3d1d9ad97bd94512e67fa74fe565",
+      "runner/probe.py": "28e686607fc402b5f483d0f0b6940b3e83c6f8d0f6aba71a2ffbb6d71edb341e"
+    },
+    "image_inputs_sha256": "5f083c95e28ea4f7eb7c98bc0025a2030a838309360bcc38d799a3835559706c",
+    "base_image": "python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b"
+  },
+  "synthetic_allowlist": {
+    "path": "runner/synthetic_allowlist.json",
+    "sha256": "0f3606b7134962adff8ee4f5be20408699475134a02c15a37c671fb8218d6497"
   }
 }

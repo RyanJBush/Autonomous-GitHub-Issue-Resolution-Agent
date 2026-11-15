@@ -37,3 +37,56 @@ jobs:
           name: synthetic-eval
           path: out/eval/
           if-no-files-found: warn
+
+  # Trusted synthetic execution evidence. Hand-written, hash-allowlisted fixtures only; no model, no secrets.
+  # contents: read is required to check out this private repository; nothing else is granted.
+  boundary-synthetic:
+    needs: offline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Job credential inventory (presence of standard GitHub variables only; no values)
+        run: |
+          for v in GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL ACTIONS_CACHE_URL ACTIONS_RESULTS_URL; do
+            if [ -n "${!v:-}" ]; then echo "$v: present in step environment"; else echo "$v: absent from step environment"; fi
+          done
+          if git config --get-regexp 'http\..*\.extraheader' >/dev/null 2>&1; then echo "git extraheader: configured"; else echo "git extraheader: not configured"; fi
+          if id -nG | tr ' ' '\n' | grep -qx docker; then echo "runner user in docker group: yes"; else echo "runner user in docker group: no"; fi
+      - name: Docker and kernel versions
+        run: |
+          uname -r
+          docker version --format 'client={{.Client.Version}} server={{.Server.Version}}'
+          docker info --format 'cgroup={{.CgroupVersion}} driver={{.CgroupDriver}} runtime={{.DefaultRuntime}} rootless={{json .SecurityOptions}}'
+      - name: Install pinned dev dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Build pinned runner image (docker build --network none)
+        run: .venv/bin/python -m ira build-runner-image
+      - name: Full test suite with Docker required (Docker tests fail instead of skipping)
+        env:
+          IRA_REQUIRE_DOCKER: "1"
+        run: .venv/bin/python -m pytest -q -rs
+      - name: Trusted synthetic execution evaluation
+        run: .venv/bin/python -m ira eval --execute --out out/eval-exec
+      - name: No leftover ira containers
+        if: ${{ always() }}
+        run: |
+          left="$(docker ps -a -q --filter label=ira.run)"
+          if [ -n "$left" ]; then echo "leftover containers: $left"; exit 1; fi
+          echo "no leftover ira containers"
+      - name: Publish execution evaluation summary
+        if: ${{ always() }}
+        run: |
+          if [ -f out/eval-exec/eval-summary.md ]; then cat out/eval-exec/eval-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() }}
+        with:
+          name: synthetic-execution-eval
+          path: out/eval-exec/
+          if-no-files-found: warn

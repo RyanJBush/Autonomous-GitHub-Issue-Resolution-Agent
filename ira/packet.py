@@ -101,12 +101,40 @@ def render_markdown(p: dict) -> str:
                 "", fenced(text, "diff")]
     else:
         out.append(f"- Unavailable: {visible(p['unavailable'].get('patch'), L)}")
+    ex = p["execution"]
     out += ["", "## Execution and tests", "",
-            f"- Boundary verified: {p['execution']['boundary_verified']} ({visible(p['execution']['reason'], L)})",
-            f"- Trusted test: {code_span(p['tests']['identity']['path'], 200)} sha256 {p['tests']['identity']['sha256']}",
-            f"- Baseline: {visible(p['unavailable'].get('tests.baseline', 'see packet.json'), L)}",
-            f"- Candidate: {visible(p['unavailable'].get('tests.candidate', 'see packet.json'), L)}",
-            "", "## Trace", ""]
+            f"- Mode: {code_span(ex['mode'], 60)}; candidate executed: {ex['candidate_executed']}; "
+            f"verified for model-generated code: **{ex['verified_for_model_generated_code']}**",
+            f"- Trusted test: {code_span(p['tests']['identity']['path'], 200)} sha256 {p['tests']['identity']['sha256']}"]
+    auth = ex.get("authorization")
+    if auth:
+        out.append(f"- Synthetic execution authorization: {auth.get('authorized')} "
+                   f"({code_span(auth.get('case_id') or auth.get('detail'), 120)})")
+    if ex.get("probe"):
+        out.append(f"- Boundary probe passed: {ex['probe']['passed']}; failed checks: "
+                   f"{code_span(','.join(ex['probe']['failed_checks']) or 'none', 300)}")
+    if ex.get("host"):
+        h = ex["host"]
+        out.append(f"- Host: docker {code_span(h.get('docker_server_version'), 40)}, cgroup v{h.get('cgroup_version')}, "
+                   f"kernel {code_span(h.get('kernel'), 60)}")
+    for stage in ("baseline", "candidate"):
+        t = p["tests"][stage]
+        if t is None:
+            out.append(f"- {stage.title()}: {visible(p['unavailable'].get('tests.' + stage), L)}")
+            continue
+        out.append(f"- {stage.title()}: verdict {code_span(t['verdict'], 60)} ({code_span(t['reason'], 120)}); "
+                   f"pytest exit {t['pytest_exit']}; container exit {t['exit_code']}; timed out {t['timed_out']}; "
+                   f"cleanup ok {t['cleanup_ok']}; {t['duration_s']} s")
+        for tid, outcome in sorted((t.get("tests") or {}).items()):
+            out.append(f"  - {code_span(tid, 120)}: {outcome}")
+    for c in ex.get("containers") or []:
+        text, cut = visible_block(c["stderr"]["text"], 2000)
+        out += ["", f"Container {code_span(c['role'], 20)} stderr (candidate-influenced, bounded, escaped"
+                    f"{', truncated' if cut or c['stderr']['truncated'] else ''}; {c['stderr']['bytes']} bytes):",
+                "", fenced(text, "text")]
+    for risk in ex.get("residual_risks") or []:
+        out.append(f"- Residual risk: {risk}")
+    out += ["", "## Trace", ""]
     out += [f"{t['seq']}. {code_span(t['stage'], 40)} {code_span(t['event'], 80)}" for t in p["trace"]]
     out += ["", "## Limitations", ""] + [f"- {x}" for x in p["limitations"]]
     return "\n".join(out) + "\n"

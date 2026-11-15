@@ -15,6 +15,7 @@ from pathlib import Path
 
 from . import __version__, boundary, caps, packet, policy, prompt
 from .adapters import AdapterError, FixtureAdapter
+from .authorize import NotAuthorized, authorize
 from .base import BaseVerificationError, verify
 from .demo_repo import PROJECT_ROOT, load_pinned
 from .gitcmd import GitError, run_git
@@ -22,6 +23,22 @@ from .models import CannotPropose, RequestError, RunRequest, SchemaError, load_r
 from .sanitize import bounded
 from .scratch import ApplyFailed, apply_and_confirm
 from .status import Status
+
+RESIDUAL_RISKS_M2 = [
+    "Containers share the host kernel; a kernel, runc or dockerd escape reaches the host and its credentials.",
+    "The Docker daemon is rootful and user namespaces are not remapped; uid 65534 inside is uid 65534 outside.",
+    "Candidate code runs inside the pytest process and can forge exit codes, JUnit XML and output.",
+    "Resource limits are observed and tested with synthetic fixtures, not proven complete.",
+    "Passing probes describe this run on this host only; they do not verify isolation for model-generated code.",
+]
+
+LIMITATIONS_M2 = [
+    "Milestone 2: only hand-reviewed synthetic fixtures, bound by exact bytes, can reach the executor.",
+    "No live model adapter exists; live or replayed responses are never executed.",
+    "Test results are candidate-influenced evidence for human review, not proof of correctness or safety.",
+    "Scratch application is a controlled git file operation, not a sandbox.",
+    "A passing result authorizes no PR or merge.",
+]
 
 LIMITATIONS_M1 = [
     "Milestone 1: no candidate code is executed; trusted tests are not run.",
@@ -47,6 +64,8 @@ class _Run:
         self.adapter_identity = {"kind": req.adapter.kind, "name": None, "model": None, "calls": 0}
         self.fields = {k: None for k in ("base", "prompt", "response", "parsed_response", "patch", "apply")}
         self.request_sha256 = hashlib.sha256(raw_request).hexdigest()
+        self.execution = None  # set when an executor is used
+        self.tests = {"baseline": None, "candidate": None}
 
     def event(self, stage, name, code=None):
         self.stage = stage
@@ -70,7 +89,7 @@ def _project_commit():
 
 
 def execute(request_path: Path | str, out_dir: Path | str, *, adapter_factory=default_adapter_factory,
-            work_root: Path | str | None = None, pinned: dict | None = None) -> tuple[dict, Path]:
+            work_root: Path | str | None = None, pinned: dict | None = None, executor=None) -> tuple[dict, Path]:
     raw_request = Path(request_path).read_bytes()
     req = load_request(raw_request)  # RequestError propagates: no run, no packet
     run_dir = Path(out_dir) / req.run_id
@@ -80,18 +99,18 @@ def execute(request_path: Path | str, out_dir: Path | str, *, adapter_factory=de
     r = _Run(req, raw_request)
     status, reason = Status.EXECUTION_ERROR, "internal_error"
     try:
-        status, reason = _pipeline(r, pinned, adapter_factory, Path(work_root or tempfile.gettempdir()))
+        status, reason = _pipeline(r, pinned, adapter_factory, Path(work_root or tempfile.gettempdir()), executor)
     except Exception as error:  # trusted-code failure; never candidate execution in M1
         r.event(r.stage, "internal_error", type(error).__name__)
         status, reason = Status.EXECUTION_ERROR, f"internal_error:{type(error).__name__}"
-    pkt = _assemble(r, pinned, status, reason)
+    pkt = _assemble(r, pinned, status, reason, executor is not None)
     problems = packet.check_unavailable_invariant(pkt)
     if problems:
         raise RuntimeError("packet invariant violated: " + "; ".join(problems))
     return pkt, packet.write(run_dir, pkt)
 
 
-def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path):
+def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=None):
     req = r.req
     r.event("request", "request_loaded")
 
@@ -200,10 +219,42 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path):
                          "method": "fresh scratch repository with controlled git configuration (not a sandbox)"}
     r.event("apply", "confirmed")
 
-    gate = boundary.verify_execution_boundary()
-    r.decide("execution_boundary", "fail" if not gate.verified else "pass", gate.code)
-    r.event("execution", "blocked", gate.code)
-    return Status.BLOCKED_BOUNDARY_UNVERIFIED, gate.code
+    if executor is None:
+        gate = boundary.verify_execution_boundary()
+        r.decide("execution_boundary", "fail" if not gate.verified else "pass", gate.code)
+        r.event("execution", "blocked", gate.code)
+        return Status.BLOCKED_BOUNDARY_UNVERIFIED, gate.code
+
+    # Milestone 2: authorization binds to exact bytes before any docker call.
+    try:
+        entry = authorize(request_kind=req.adapter.kind, adapter_identity=r.adapter_identity,
+                          response_sha256=r.fields["response"]["raw_sha256"], patch_sha256=vp.patch_sha256,
+                          new_content_sha256=vp.new_content_sha256, base_commit=vb.base_commit,
+                          allowlisted_file=vb.allowlisted_file, pinned=pinned)
+    except NotAuthorized as error:
+        r.decide("synthetic_execution_authorization", "fail", error.detail)
+        r.event("execution", "not_authorized", error.detail)
+        r.execution = {"authorization": {"authorized": False, "detail": error.detail}, "candidate_executed": False}
+        return Status.BLOCKED_BOUNDARY_UNVERIFIED, f"execution_not_authorized:{error.detail}"
+    r.decide("synthetic_execution_authorization", "pass")
+    r.event("execution", "authorized", entry["case_id"])
+    from .execution import Limits
+    rep = executor.run(run_id=req.run_id, repo_path=vb.path, base_commit=vb.base_commit,
+                       allowlisted_file=vb.allowlisted_file, new_content=vp.new_content,
+                       limits=Limits(**req.execution.model_dump()))
+    r.execution = {"authorization": {"authorized": True, "case_id": entry["case_id"],
+                                     "reviewed_effect": entry["reviewed_effect"]},
+                   "candidate_executed": rep.candidate_executed, "host": rep.host, "image": rep.image,
+                   "probe": rep.probe, "containers": rep.containers}
+    r.tests = {"baseline": rep.baseline, "candidate": rep.candidate}
+    for stage in ("probe", "baseline", "candidate"):
+        recs = [c for c in rep.containers if c["role"] == stage]
+        if recs:
+            r.event(stage, "finished", "cleanup_ok" if recs[0]["cleanup_ok"] else "cleanup_failed")
+    r.decide("synthetic_execution", "pass" if rep.status is Status.TESTS_PASSED_AWAITING_HUMAN_REVIEW else "fail",
+             rep.reason)
+    r.event("execution", "verdict", rep.reason)
+    return rep.status, rep.reason
 
 
 _ORDER = ("base", "prompt", "response", "parsed_response", "patch", "apply")
@@ -224,7 +275,7 @@ def _lossy(b: bytes) -> bool:
         return True
 
 
-def _assemble(r: _Run, pinned: dict, status: Status, reason: str) -> dict:
+def _assemble(r: _Run, pinned: dict, status: Status, reason: str, executed_mode: bool = False) -> dict:
     req = r.req
     for name in _ORDER:
         if r.fields[name] is None and name not in r.unavailable:
@@ -233,10 +284,14 @@ def _assemble(r: _Run, pinned: dict, status: Status, reason: str) -> dict:
     unavailable = dict(r.unavailable)
     if commit is None:
         unavailable["provenance.project_commit"] = commit_reason
-    not_run = ("Milestone 1: trusted tests are not executed (no verified execution boundary)"
-               if status is Status.BLOCKED_BOUNDARY_UNVERIFIED else f"not run: terminal status {status.value}")
-    unavailable["tests.baseline"] = not_run
-    unavailable["tests.candidate"] = not_run
+    if not executed_mode:
+        not_run = ("offline mode: trusted tests are not executed (no execution requested)"
+                   if status is Status.BLOCKED_BOUNDARY_UNVERIFIED else f"not run: terminal status {status.value}")
+    else:
+        not_run = f"not run: terminal status {status.value} ({reason})"
+    for stage in ("baseline", "candidate"):
+        if r.tests[stage] is None:
+            unavailable[f"tests.{stage}"] = not_run
     kind = req.adapter.kind
     return {
         "schema_version": packet.SCHEMA_VERSION,
@@ -260,16 +315,26 @@ def _assemble(r: _Run, pinned: dict, status: Status, reason: str) -> dict:
                    "request_limits": req.limits.model_dump(), "decisions": r.decisions},
         "patch": r.fields["patch"],
         "apply": r.fields["apply"],
-        "execution": {"boundary_verified": False, "candidate_executed": False,
-                      "reason": "Milestone 1 has no verified disposable execution environment",
-                      "requested_limits": req.execution.model_dump()},
+        "execution": _execution_section(r, req, executed_mode),
         "tests": {"identity": {"path": pinned["trusted_test"]["path"], "sha256": pinned["trusted_test"]["sha256"],
                                "test_ids": pinned["trusted_test"]["test_ids"],
                                "expected_base_failures": pinned["trusted_test"]["expected_base_failures"]},
-                  "baseline": None, "candidate": None},
+                  "baseline": r.tests["baseline"], "candidate": r.tests["candidate"]},
         "trace": r.trace,
         "human_review": {"required": True, "pr_creation_authorized": False, "merge_authorized": False,
                          "note": "Draft PR creation requires explicit operator approval; no automatic merge."},
-        "limitations": LIMITATIONS_M1,
+        "limitations": LIMITATIONS_M2 if executed_mode else LIMITATIONS_M1,
         "unavailable": unavailable,
     }
+
+
+def _execution_section(r: _Run, req, executed_mode: bool) -> dict:
+    base = {"mode": "trusted_synthetic_execution" if executed_mode else "offline",
+            "verified_for_model_generated_code": False, "candidate_executed": False,
+            "requested_limits": req.execution.model_dump()}
+    if not executed_mode:
+        base["reason"] = "offline mode: no container is started"
+        return base
+    base.update(r.execution or {"authorization": None, "reason": "execution stage not reached"})
+    base["residual_risks"] = RESIDUAL_RISKS_M2
+    return base

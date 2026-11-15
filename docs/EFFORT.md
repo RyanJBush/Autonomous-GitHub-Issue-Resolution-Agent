@@ -14,6 +14,8 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 | 2026-11-15 | Claude | README corrections: Linux-only scope, exit-code meaning, packet contents and secrets (03:05:05Z–03:06:01Z, to commit; excludes post-commit CI polling) | 0.9 min | +3 min handoff |
 | 2026-11-15 | Codex | Final Milestone 1 review and acceptance at 78ef8c7 | unmeasured | unmeasured |
 | 2026-11-15 | Claude | M2 design and evidence plan, docs only (03:21:34Z–03:23:23Z, to commit) | 1.8 min | +4 min handoff |
+| 2026-11-15 | Codex | Review of the M2 design and approval with amendments | unmeasured | unmeasured |
+| 2026-11-15 | Claude | M2 implementation and local trusted synthetic checks (03:28:12Z–03:42:56Z, to commit; excludes hosted CI polling) | 14.7 min | +5 min handoff |
 
-Running totals: Claude measured ≈ 29.7 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8); Claude estimated additions ≈ 23 min;
+Running totals: Claude measured ≈ 44.4 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7); Claude estimated additions ≈ 28 min;
 Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus unmeasured review and reasoning time.

@@ -312,3 +312,19 @@ def test_ledger_must_be_outside_checkout_and_live_needs_one(built_repo, tmp_path
     path = live_request(tmp_path, built_repo)
     with pytest.raises(RequestError):
         runner.execute(path, tmp_path / "out", work_root=tmp_path / "w", live_approval=approval_for(path))
+
+
+
+def test_client_setup_failure_does_not_consume_and_is_mapped(built_repo, tmp_path):
+    ledger = SingleUseLedger(tmp_path / "ledger")
+    path = live_request(tmp_path, built_repo, run_id="nokey")
+
+    def factory(spec):
+        a = LiveAdapter(spec, client_factory=lambda s: (_ for _ in ()).throw(
+            anthropic.AnthropicError(f"missing key {SENTINEL}")))
+        return a
+    pkt, d = runner.execute(path, tmp_path / "out", adapter_factory=factory, work_root=tmp_path / "w",
+                            live_approval=approval_for(path, "5" * 32), single_use=ledger)
+    assert (pkt["terminal_status"], pkt["status_reason"]) == ("adapter_error", "client_setup_failed:AnthropicError")
+    assert not ledger.is_used("5" * 32) and pkt["adapter"]["live"]["request_sent"] is False
+    assert SENTINEL not in json.dumps(pkt)

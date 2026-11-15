@@ -118,12 +118,16 @@ class LiveAdapter:
             self._fail("cost_estimate_exceeds_cap", "pre-call estimate exceeds the request cost cap; no request sent")
         if self.before_send is None:
             self._fail("single_use_claim_missing", "no single-use claim configured; refusing to send")
+        try:  # constructing the client makes no request; a failure here must not consume the approval
+            client = self.client_factory(self.spec)
+        except Exception as error:
+            self.record["error"] = safe_error_record(error)
+            self._fail(f"client_setup_failed:{type(error).__name__[:64]}", "client could not be constructed")
         try:
             self.record["single_use_marker"] = self.before_send()
         except Exception as error:
             self._fail("approval_already_used" if type(error).__name__ == "AlreadyUsed" else "single_use_claim_failed",
                        "approval could not be claimed; no request sent")
-        client = self.client_factory(self.spec)
         try:
             self.record["request_sent"] = True
             response = client.messages.create(model=self.spec.model, max_tokens=self.spec.max_tokens,

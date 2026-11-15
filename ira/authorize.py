@@ -52,6 +52,11 @@ def _authorize_replay(*, adapter_identity, response_sha256, patch_sha256, new_co
             "live_run_id": adapter_identity.get("live_run_id"), "response_sha256": response_sha256,
             "patch_sha256": patch_sha256, "new_content_sha256": new_content_sha256, "base_commit": base_commit,
             "allowlisted_file": allowlisted_file}
+    if adapter_identity.get("source_provider") == "local Ollama":
+        raw_hash = adapter_identity.get("raw_model_sha256")
+        if not isinstance(raw_hash, str) or len(raw_hash) != 64:
+            raise NotAuthorized("replay_raw_model_hash_missing")
+        want["raw_model_sha256"] = raw_hash
     entries = [e for e in data["entries"] if e.get("recording_sha256") == want["recording_sha256"]]
     if not entries:
         raise NotAuthorized("replay_not_approved")
@@ -77,6 +82,8 @@ def authorize(*, request_kind: str, adapter_identity: dict, response_sha256: str
               prescreen_passed: bool = False) -> dict:
     """Return the matching allowlist entry or raise NotAuthorized with a specific detail."""
     kind = adapter_identity.get("kind")
+    if "local_model" in (request_kind, kind):
+        raise NotAuthorized("untrusted_execution_not_enabled")
     if "live_model" in (request_kind, kind):
         raise NotAuthorized("untrusted_execution_not_enabled")  # live responses are never executed
     if request_kind != kind:

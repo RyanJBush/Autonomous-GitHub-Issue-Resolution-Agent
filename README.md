@@ -3,9 +3,9 @@
 A supervised, bounded MVP: one model proposes one patch for one small issue in one Python file of an explicitly
 synthetic demonstration repository. Trusted code validates the proposal and writes a review packet for a human.
 
-**Status: Milestone 2 accepted (trusted synthetic execution). Milestone 3 offline implementation on branch `m3-live-adapter`: no model has been called.** What exists and what does not:
+**Status: one real local-model proposal was separately evaluated on the synthetic demonstration issue.** The Anthropic adapter remains offline-only and has not made a real request. The local model run and evaluation have the limitations below:
 
-| Capability | Milestone 1 |
+| Capability | Current state |
 |---|---|
 | Strict request/response schemas, strict JSON | Implemented and tested |
 | Narrow single-file patch policy with exact positions and trusted caps | Implemented and tested |
@@ -15,7 +15,7 @@ synthetic demonstration repository. Trusted code validates the proposal and writ
 | Synthetic fixture adapter and 82-case evaluation (offline and `--execute`) | Implemented; **all fixtures are hand-written, no model is called** |
 | Live model adapter (`claude-sonnet-5-5`, one request) and replay | Implemented and tested **offline with a fake client**; no real request has been made. A live call follows [docs/LIVE_CALL_PROCEDURE.md](docs/LIVE_CALL_PROCEDURE.md) (operator-controlled local Linux run) and needs an operator-approved packet; single use is enforced by a local ledger on that machine only, not globally. Live responses are never executed; a replay executes only with an exact-hash operator approval, and none exists |
 | Docker executor for trusted synthetic checks | Implemented (`--execute`): byte-bound authorization, probe, per-container config checks, caps, timeout, verified cleanup. **Not verified for model-generated code**; see [docs/BOUNDARY.md](docs/BOUNDARY.md) |
-| Trusted test execution (baseline and candidate) | Runs only for allowlisted synthetic fixtures with `--execute`; without it, accepted patches stop at `blocked_boundary_unverified` |
+| Trusted test execution (baseline and candidate) | The original model run stopped before execution. Codex separately evaluated its reviewed file; the agent replay gate remains closed. The built-in `--execute` path requires an approved replay or allowlisted synthetic fixture. |
 | Hosted CI | Workflow present; see the Actions tab for observed runs — a workflow file is not evidence of a pass |
 | Draft PR creation | Not implemented; requires explicit operator approval. Never merges. |
 
@@ -60,7 +60,7 @@ statement in the synthetic `src/labels.py` issue. The model proposes a return st
 adapter inserts it into the pinned source and derives a unified diff. The raw model output,
 model digest, actual prompt hash and transformation are recorded separately. This is not a
 general-purpose issue resolver. Model output is untrusted and is never executed during generation.
-The [local run record](docs/LOCAL_RUN.md) preserves the observed proposal, failed attempts, and the separately supervised trusted-test evaluation.
+The [local run record](docs/LOCAL_RUN.md) preserves the observed proposal, test-shaped prompt hints, failed attempts, and the separately supervised trusted-test evaluation.
 A short [demo walkthrough](docs/DEMO.md) shows how to inspect the evidence.
 
 ```bash

@@ -29,7 +29,7 @@ RUN_KIND_LABELS = {
     "synthetic_fixture": "SYNTHETIC: hand-written fixture output; no model was called",
     "live_model": "LIVE MODEL RUN",
     "local_model": "LOCAL MODEL RUN: actual Ollama generation; no API charge",
-    "replay_recording": "REPLAY of a recorded live model response",
+    "replay_recording": "REPLAY of a recorded model response; see source provenance",
 }
 
 
@@ -80,10 +80,15 @@ def render_markdown(p: dict) -> str:
             f" model: {code_span(ad.get('model'), 80)}; calls: {ad.get('calls')}"]
     live = ad.get("live")
     if live and p["run_kind"] == "local_model":
-        out += [f"- Local model digest: {code_span(live.get('model_digest'), 64)}",
+        out += [f"- Local model prompt version: {code_span(live.get('actual_prompt_version'), 64)}",
+                f"- Local model digest: {code_span(live.get('model_digest'), 64)}",
                 f"- Actual local prompt SHA-256: {code_span(live.get('actual_prompt_sha256'), 64)}",
                 f"- Raw model output SHA-256: {code_span(live.get('raw_model_sha256'), 64)}",
                 f"- Transformation: {visible(live.get('transformation'), L)}"]
+        actual_prompt, prompt_truncated = visible_block(live.get('actual_prompt_text', ''), 12000)
+        if actual_prompt:
+            out += ["", "Prompt sent to local model" + (" (truncated)" if prompt_truncated else "") + ":", "",
+                    fenced(actual_prompt, "text")]
         raw_local, truncated = visible_block(live.get('raw_model_response', ''), 4000)
         out += ["", "Actual local model response" + (" (truncated)" if truncated else "") + ":", "",
                 fenced(raw_local, "json")]

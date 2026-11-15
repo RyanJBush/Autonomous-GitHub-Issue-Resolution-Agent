@@ -203,6 +203,8 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
         _unavail_from(r, "response", f"adapter error: {error.code}")
         return Status.ADAPTER_ERROR, error.code
     r.live = getattr(adapter, "record", None)
+    if req.adapter.kind == "local_model":
+        r.fields["prompt"]["role"] = "intermediate template; actual prompt sent is in adapter.live"
     if req.adapter.kind in ("live_model", "local_model"):
         from .replay import write_recording
         try:

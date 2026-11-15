@@ -1,6 +1,6 @@
 # Two-minute demo: supervised issue resolution
 
-This demo uses one intentionally synthetic Python issue. The local model run is real; the issue
+This demo uses one intentionally synthetic Python issue and a prompt containing hints shaped by its trusted tests. The local model run is real; the issue
 and trusted tests are fixtures. It is not a benchmark of general GitHub issue resolution.
 
 ## Show the evidence
@@ -21,8 +21,11 @@ On the documented Linux environment, with Ollama listening on `127.0.0.1:11434` 
 `qwen3:4b` model digest specified in `demo/local/request.json` installed:
 
 ```bash
-python -m ira build-demo --dest /tmp/ira-demo-repo
-python -m ira run --request demo/local/request.json --out /tmp/ira-local-output
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+export PYTHONDONTWRITEBYTECODE=1
+.venv/bin/python -m ira build-demo --dest /tmp/ira-demo-repo
+.venv/bin/python -m ira run --request demo/local/request.json --out /tmp/ira-local-output
 ```
 
 Use fresh output paths or a new run ID for another attempt. The generation step does not execute

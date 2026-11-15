@@ -33,6 +33,8 @@ def test_local_proposal_preserves_model_output_and_derives_diff(monkeypatch):
     assert normalized['base_commit'] == 'b' * 40
     assert "-    return text.lower()\n+    return ' '.join(text.split()).lower()\n" in normalized['diff']
     assert adapter.record['raw_model_response'] == raw
+    assert adapter.record['actual_prompt_version'] == 'ira.ollama.return.v1'
+    assert adapter.record['actual_prompt_text'] == calls[1][1]['prompt']
     assert adapter.record['transformation'].startswith('model-proposed single return statement')
     assert calls[1][1]['stream'] is False
     with pytest.raises(AdapterError, match='attempt_limit'):
@@ -91,6 +93,7 @@ def test_pipeline_blocks_local_model_execution_and_records_raw(monkeypatch, buil
             raise AssertionError('local model output must not reach execution')
     packet, output = runner.execute(path, tmp_path / 'output', work_root=tmp_path / 'work', executor=Executor())
     assert packet['terminal_status'] == 'blocked_boundary_unverified'
+    assert packet['status_reason'] == 'execution_not_authorized:untrusted_execution_not_enabled'
     assert packet['adapter']['live']['raw_model_response'] == raw
     assert packet['execution']['candidate_executed'] is False
     assert 'Actual local model response' in (output / 'review.md').read_text()

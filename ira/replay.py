@@ -21,7 +21,8 @@ from .models import SchemaError, load_json_strict
 
 SCHEMA = "ira.recording.v1"
 RECORDING_LABEL = "RECORDED LIVE MODEL RESPONSE: real model output; not synthetic"
-REPLAY_LABEL = "REPLAY of a recorded live model response"
+LOCAL_RECORDING_LABEL = "RECORDED LOCAL MODEL RESPONSE: normalized diff; raw model output in provenance"
+REPLAY_LABEL = "REPLAY of a recorded model response; see source provenance"
 _FIELDS = {"schema_version", "label", "live_run_id", "raw_text", "raw_sha256", "raw_bytes", "prompt_sha256",
            "prompt_template_version", "prompt_template_sha256", "request_sha256", "base_commit", "live",
            "recorded_at"}
@@ -34,7 +35,8 @@ def write_recording(directory: Path, *, run_id: str, raw: bytes, live_record: di
     path = directory / f"{run_id}.recording.json"
     if path.exists():
         raise FileExistsError("recording already exists for this run id")
-    body = {"schema_version": SCHEMA, "label": RECORDING_LABEL, "live_run_id": run_id,
+    label = LOCAL_RECORDING_LABEL if live_record.get("provider") == "local Ollama" else RECORDING_LABEL
+    body = {"schema_version": SCHEMA, "label": label, "live_run_id": run_id,
             "raw_text": raw.decode("utf-8"), "raw_sha256": hashlib.sha256(raw).hexdigest(), "raw_bytes": len(raw),
             "prompt_sha256": prompt_sha256, "prompt_template_version": template_version,
             "prompt_template_sha256": template_sha256, "request_sha256": request_sha256, "base_commit": base_commit,
@@ -71,8 +73,15 @@ class ReplayAdapter:
         except SchemaError:
             raise AdapterError("replay_recording_malformed", "recording is not strict JSON") from None
         if not isinstance(rec, dict) or set(rec) != _FIELDS or rec.get("schema_version") != SCHEMA \
-                or rec.get("label") != RECORDING_LABEL or not isinstance(rec.get("raw_text"), str):
+                or rec.get("label") not in (RECORDING_LABEL, LOCAL_RECORDING_LABEL) or not isinstance(rec.get("raw_text"), str):
             raise AdapterError("replay_recording_malformed", "recording fields or label are not as expected")
+        live = rec.get("live")
+        if not isinstance(live, dict):
+            raise AdapterError("replay_recording_malformed", "missing model provenance")
+        if live.get("provider") == "local Ollama":
+            model_raw = live.get("raw_model_response")
+            if not isinstance(model_raw, str) or hashlib.sha256(model_raw.encode("utf-8")).hexdigest() != live.get("raw_model_sha256"):
+                raise AdapterError("replay_model_raw_hash_mismatch", "raw model output does not match its hash")
         raw = rec["raw_text"].encode("utf-8")
         if hashlib.sha256(raw).hexdigest() != rec["raw_sha256"] or len(raw) != rec["raw_bytes"]:
             raise AdapterError("replay_raw_hash_mismatch", "raw text does not match its recorded hash")
@@ -85,6 +94,7 @@ class ReplayAdapter:
         return {"kind": "replay_recording", "name": "ReplayAdapter", "label": REPLAY_LABEL,
                 "model": live.get("requested_model"), "response_model": live.get("response_model"),
                 "live_run_id": self.recording["live_run_id"], "recording_sha256": self.spec.recording_sha256,
+                "source_provider": live.get("provider"), "raw_model_sha256": live.get("raw_model_sha256"),
                 "original_request_id": live.get("request_id"), "original_message_id": live.get("message_id"),
                 "fixture_case": None, "fixture_sha256": None}
 

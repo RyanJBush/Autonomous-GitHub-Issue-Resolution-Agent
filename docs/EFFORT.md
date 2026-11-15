@@ -29,9 +29,11 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 | 2026-11-15 | Claude | M3 packet regeneration, dry run, push and CI (04:33:22Z–04:36:04Z; carried from Handoff 010) | 2.7 min | — |
 | 2026-11-15 | Codex | M3 review at 790dbd8 (sentinel re-check; Windows environment inspection) | unmeasured | unmeasured |
 | 2026-11-15 | Claude | Hidden key prompt, pinned provider host, operator environment check, WSL procedure, estimate-threshold naming (04:38:55Z–04:43:54Z, to code commit; packet commit and handoff reported in the handoff) | 5.0 min | +5 min handoff |
-
-Running totals: Claude measured ≈ 82.6 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7 + 3.5 + 5.7 + 2.7 + 5.0); Claude estimated additions ≈ 49 min;
-Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus unmeasured review and reasoning time.
-
 | 2026-11-15 | Codex | Local Ollama adapter, local model attempts, evidence and checks (05:07–05:19 UTC) | ~12 min wall-clock, approximate | Earlier Codex review and reasoning remains unmeasured |
 | 2026-11-15 | Codex | Local trusted baseline and candidate evaluation, review packet, hosting and demo preparation | ~7 min wall-clock, approximate | Follow-on to local adapter work; CI polling excluded |
+| 2026-11-15 | Claude | M3 environment-check proposal, push and CI (carried from Handoff 011) | 2.9 min | +5 min handoff |
+| 2026-11-15 | Claude | Independent review at 159d517 (05:35:31–05:39:30 UTC) | 4.0 min | +4 min handoff |
+| 2026-11-15 | Codex | Address independent review findings | unmeasured | unmeasured |
+
+Running totals: Claude measured ≈ 89.5 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7 + 3.5 + 5.7 + 2.7 + 5.0 + 2.9 + 4.0); Claude estimated additions ≈ 58 min;
+Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus ~19 min approximate local adapter/evaluation work and unmeasured review and reasoning time.

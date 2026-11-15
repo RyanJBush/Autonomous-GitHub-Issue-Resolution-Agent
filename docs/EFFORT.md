@@ -19,6 +19,8 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 | 2026-11-15 | Claude | Hosted CI observation and BOUNDARY.md hosted section (03:42:56Z–03:45:32Z, to commit) | 2.6 min | — |
 | 2026-11-15 | Codex | M2 review at a34cfa5 (allowlist diffs, Windows verdict tests, hosted run 43673783023) | unmeasured | unmeasured |
 | 2026-11-15 | Claude | Cleanup-precedence fix, fault-injection tests, image-trust and fork-burst wording (03:52:06Z–03:55:48Z, to commit; includes restoring dockerd after a VM restart; excludes hosted CI polling) | 3.7 min | +3 min handoff |
+| 2026-11-15 | Codex | Final M2 review and acceptance at f224d8e | unmeasured | unmeasured |
+| 2026-11-15 | Claude | M3 design and verification plan, docs only (04:01:47Z–04:03:07Z, to commit) | 1.3 min | +3 min handoff |
 
-Running totals: Claude measured ≈ 50.7 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7); Claude estimated additions ≈ 31 min;
+Running totals: Claude measured ≈ 52.0 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3); Claude estimated additions ≈ 34 min;
 Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus unmeasured review and reasoning time.

@@ -61,6 +61,7 @@ adapter inserts it into the pinned source and derives a unified diff. The raw mo
 model digest, actual prompt hash and transformation are recorded separately. This is not a
 general-purpose issue resolver. Model output is untrusted and is never executed during generation.
 The [local run record](docs/LOCAL_RUN.md) preserves the observed proposal, failed attempts, and the separately supervised trusted-test evaluation.
+A short [demo walkthrough](docs/DEMO.md) shows how to inspect the evidence.
 
 ```bash
 python -m ira build-demo --dest /tmp/ira-demo-repo

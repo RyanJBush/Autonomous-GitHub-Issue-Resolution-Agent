@@ -181,6 +181,8 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
     r.fields["prompt"] = {"template_version": prompt.TEMPLATE_VERSION, "template_sha256": prompt.TEMPLATE_SHA256,
                           "prompt_sha256": hashlib.sha256(pb).hexdigest(), "prompt_bytes": len(pb),
                           "inputs": list(prompt.PROMPT_INPUTS)}
+    if req.adapter.kind == "local_model":
+        r.fields["prompt"]["role"] = "intermediate template; actual prompt sent is in adapter.live"
     r.event("prompt", "built")
 
     # Exactly one adapter call.
@@ -203,8 +205,6 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
         _unavail_from(r, "response", f"adapter error: {error.code}")
         return Status.ADAPTER_ERROR, error.code
     r.live = getattr(adapter, "record", None)
-    if req.adapter.kind == "local_model":
-        r.fields["prompt"]["role"] = "intermediate template; actual prompt sent is in adapter.live"
     if req.adapter.kind in ("live_model", "local_model"):
         from .replay import write_recording
         try:

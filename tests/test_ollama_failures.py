@@ -105,6 +105,11 @@ def test_local_recording_labels_and_raw_hash_binding(tmp_path, monkeypatch):
         authorize(request_kind='replay_recording', adapter_identity=identity, response_sha256='e'*64,
                   patch_sha256='f'*64, new_content_sha256='1'*64, base_commit='d'*40,
                   allowlisted_file='src/labels.py', pinned={'base_commit':'d'*40}, prescreen_passed=True)
+    del entry['raw_model_sha256']
+    with pytest.raises(NotAuthorized, match='replay_raw_model_sha256_mismatch'):
+        authorize(request_kind='replay_recording', adapter_identity=identity, response_sha256='e'*64,
+                  patch_sha256='f'*64, new_content_sha256='1'*64, base_commit='d'*40,
+                  allowlisted_file='src/labels.py', pinned={'base_commit':'d'*40}, prescreen_passed=True)
     entry['raw_model_sha256'] = raw_model_hash
     assert authorize(request_kind='replay_recording', adapter_identity=identity, response_sha256='e'*64,
                      patch_sha256='f'*64, new_content_sha256='1'*64, base_commit='d'*40,
@@ -115,3 +120,22 @@ def test_local_recording_labels_and_raw_hash_binding(tmp_path, monkeypatch):
     changed_hash = hashlib.sha256(path.read_bytes()).hexdigest()
     with pytest.raises(AdapterError, match='replay_model_raw_hash_mismatch'):
         ReplayAdapter(SimpleNamespace(recording_path=str(path), recording_sha256=changed_hash, live_run_id='local-1'))
+
+
+def test_adapter_error_preserves_intermediate_prompt_role(monkeypatch, built_repo, tmp_path):
+    from ira import runner
+    from ira.evaluate import make_request
+
+    request = make_request('good_trim_collapse', built_repo, 'local-error')
+    request['adapter'] = {'kind': 'local_model', 'model': 'qwen3:4b', 'model_digest': DIGEST, 'timeout_s': 30}
+    path = tmp_path / 'request.json'
+    path.write_text(json.dumps(request))
+    def fake(self, endpoint, body=None):
+        if endpoint.endswith('tags'):
+            return {'models': [{'name': 'qwen3:4b', 'digest': DIGEST}]}
+        raise AdapterError('ollama_unavailable', 'simulated')
+    monkeypatch.setattr(OllamaAdapter, '_request', fake)
+    packet, _ = runner.execute(path, tmp_path / 'output', work_root=tmp_path / 'work')
+    assert packet['terminal_status'] == 'adapter_error'
+    assert packet['prompt']['role'] == 'intermediate template; actual prompt sent is in adapter.live'
+    assert packet['adapter']['live']['actual_prompt_text']

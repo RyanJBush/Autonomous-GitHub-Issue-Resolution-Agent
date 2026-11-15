@@ -1,0 +1,35 @@
+{
+  "kind": "separately supervised evaluation",
+  "run_id": "local-qwen3-011",
+  "proposal_patch_sha256": "8db3a8d02d7c91c119089b30f02bc53204d3bb1b24a24ea950f760b7e76ddce0",
+  "candidate_sha256": "a2530d45f8d96bc5704f4e7038ed5ccd27ba122d232fe87bdf012169883b18ac",
+  "baseline": {
+    "pytest_exit": 1,
+    "cases": {
+      "test_trims_and_collapses_whitespace": "failed",
+      "test_whitespace_only_label_is_invalid": "failed",
+      "test_existing_behaviour_kept": "passed"
+    }
+  },
+  "candidate": {
+    "candidate_sha256": "a2530d45f8d96bc5704f4e7038ed5ccd27ba122d232fe87bdf012169883b18ac",
+    "trusted_test_sha256": "dbc96774fc5c7374cc91017e97d988637bde2455893ee5329a267cb43646b5d6",
+    "image": "sha256:a57f44c4213db1e85dc005ad5edbc2fd7d4c62ad82ee6707a43061c3302f0c47",
+    "container_id": "1c74c223a7ddd29dbc5ddd14a9dc240af086f94f627a807b057f58559b3b7c34",
+    "wrapper_exit": 0,
+    "pytest_exit": 0,
+    "passed_tests": [
+      "test_existing_behaviour_kept",
+      "test_trims_and_collapses_whitespace",
+      "test_whitespace_only_label_is_invalid"
+    ],
+    "network": "none",
+    "readonly_root": true,
+    "candidate_output_is_untrusted": true
+  },
+  "caveats": [
+    "Candidate code and pytest share a process; results are candidate-influenced.",
+    "Local Docker probe does not establish safety for arbitrary unreviewed model code.",
+    "This evaluation was separate from the agent replay gate; no replay approval record was created."
+  ]
+}

@@ -1,0 +1,28 @@
+FF.                                                                      [100%]
+=================================== FAILURES ===================================
+_____________________ test_trims_and_collapses_whitespace ______________________
+
+    def test_trims_and_collapses_whitespace():
+>       assert normalize_label("  Bug   Report ") == "bug report"
+E       AssertionError: assert '  bug   report ' == 'bug report'
+E         
+E         - bug report
+E         +   bug   report 
+E         ? ++   ++       +
+
+test_issue.py:9: AssertionError
+____________________ test_whitespace_only_label_is_invalid _____________________
+
+    def test_whitespace_only_label_is_invalid():
+>       assert is_valid_label(" \t ") is False
+E       AssertionError: assert True is False
+E        +  where True = is_valid_label(' \t ')
+
+test_issue.py:13: AssertionError
+==================================== PASSES ====================================
+-------------------- generated xml file: /tmp/ira/junit.xml --------------------
+=========================== short test summary info ============================
+PASSED test_issue.py::test_existing_behaviour_kept
+FAILED test_issue.py::test_trims_and_collapses_whitespace - AssertionError: a...
+FAILED test_issue.py::test_whitespace_only_label_is_invalid - AssertionError:...
+2 failed, 1 passed in 0.23s

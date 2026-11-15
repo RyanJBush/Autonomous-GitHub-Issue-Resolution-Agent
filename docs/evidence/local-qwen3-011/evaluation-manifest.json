@@ -1,0 +1,15 @@
+{
+  "baseline-envelope.json": "73614998bc91c018de46231ce96dd4fc810471aa52fc9d16a3d56ce7522dda83",
+  "baseline-stderr.txt": "40b775317779b72489ca545bf2b74d8d945f1b5237427ad3b03a8a3f2632a932",
+  "candidate-envelope.json": "776da5ccd6388e82c6ce89ceb7ce23e9cbcffc92de62b76c45d79f1e136dcc5f",
+  "candidate-result.json": "797205461ce6f9937fee1d424e38a18ab28feac73a489bd3481f69b0129ebeab",
+  "candidate-stderr.txt": "94a8c91ba919f8d3a43bd5a7bc5f69e99ce4d691ae5a86236aec6725a38c6442",
+  "evaluation.json": "6dde38a139ff0c2d952d1ac917c29640baf37b34accb8b1702f476de7281ea96",
+  "local-qwen3-011.recording.json": "330e0cb3e1884381a9c9045af8efea502479caf7cbce4352faae35d4e469298f",
+  "manifest.json": "aac98c9b893be6903f53a8ef7a2870f8a1dbd7c3bd1d4d39aa58abcb869e7e72",
+  "packet.json": "f6ccc17eebd5f2550cb47f152d253c8276cae949df525752fe55a535b207b044",
+  "proposal.diff": "8db3a8d02d7c91c119089b30f02bc53204d3bb1b24a24ea950f760b7e76ddce0",
+  "proposed-labels.py": "a2530d45f8d96bc5704f4e7038ed5ccd27ba122d232fe87bdf012169883b18ac",
+  "review-packet.md": "4737b6ef5515a29961f882e072c6cbdb515ad62f483259059c277835d23c6ff1",
+  "review.md": "ba96b2b9f6e96e20fe3e55bd301327f089d20675fac2bbffe3117fc09e7a9f03"
+}

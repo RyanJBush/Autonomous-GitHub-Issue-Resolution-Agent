@@ -1,0 +1,11 @@
+--- a/src/labels.py
++++ b/src/labels.py
+@@ -3,7 +3,7 @@
+ 
+ def normalize_label(text: str) -> str:
+     """Return a canonical label: lower-case, trimmed, internal whitespace collapsed to one space."""
+-    return text.lower()
++    return ' '.join(text.split()).lower()
+ 
+ 
+ def is_valid_label(text: str) -> bool:

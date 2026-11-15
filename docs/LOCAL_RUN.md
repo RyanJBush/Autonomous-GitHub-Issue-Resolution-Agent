@@ -26,3 +26,15 @@ An operator must inspect the entire resulting file and explicitly approve its ex
 hashes before any replay can execute. Docker synthetic checks are not proof of isolation for
 unreviewed model output. A pass from tests that import candidate code is evidence for human review,
 not proof against hostile code. Draft PR creation requires separate explicit approval.
+
+## Subsequent supervised evaluation
+
+After inspecting the whole file, Codex separately evaluated the unpatched baseline and the exact
+hashed candidate using the pinned trusted tests in a restricted local Docker container. Baseline:
+two expected failures, one pass (pytest exit 1). Candidate: all three expected tests passed, no
+skips or errors (pytest exit 0). The container had no network, read-only inputs and root filesystem,
+non-root user and resource limits. The tests import candidate code, so output is candidate-influenced.
+This was a manual evaluation under the user's request to complete the project, not an approved
+agent replay; the agent's replay gate remains closed. See the [combined review packet](evidence/local-qwen3-011/review-packet.md)
+and the retained envelopes. The original packet's blocked status is unchanged and is not contradicted:
+the testing occurred in a separate operation.

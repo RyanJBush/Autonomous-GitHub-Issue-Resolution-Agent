@@ -1,0 +1,95 @@
+{
+  "approval_id": "c3b2b0104494e77f17e1000dfd4c65e9",
+  "binds": {
+    "adapter_version": "ira.live_adapter.v1",
+    "allowlisted_file": "src/labels.py",
+    "authorized_response_models": [
+      "claude-sonnet-5-5"
+    ],
+    "base_commit": "eb455af5a468dc06630d0758f6989490fc2ddcfd",
+    "effort": "medium",
+    "estimate": {
+      "assumptions": [
+        "standard speed",
+        "no Batch API",
+        "no prompt caching expected",
+        "no server tools"
+      ],
+      "input_tokens_basis": "prompt UTF-8 bytes + 64 framing tokens (heuristic, not a provider token count)",
+      "input_tokens_estimate": 2072,
+      "input_usd_estimate": "0.004144",
+      "label": "ESTIMATE (not a guaranteed bound; the provider invoice is authoritative)",
+      "model": "claude-sonnet-5-5",
+      "output_tokens_basis": "max_tokens, documented as a strict limit that includes thinking tokens",
+      "output_tokens_ceiling": 8000,
+      "output_usd_at_ceiling": "0.080000",
+      "price_retrieved": "2026-11-15",
+      "price_source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "prices": {
+        "cache_read_usd_per_mtok": "0.10",
+        "cache_write_5m_usd_per_mtok": "2.50",
+        "input_usd_per_mtok": "2",
+        "output_usd_per_mtok": "10"
+      },
+      "total_usd_estimate": "0.084144"
+    },
+    "estimate_threshold_usd": "0.25",
+    "fallbacks": null,
+    "max_retries": 0,
+    "max_tokens": 8000,
+    "model": "claude-sonnet-5-5",
+    "procedure_path": "docs/LIVE_CALL_PROCEDURE.md",
+    "procedure_sha256": "c4f8fad01b1d69cb47bae337bfa5508ddd94dd1d94abe7d44b409c22da2c2c2f",
+    "prompt_bytes": 2008,
+    "prompt_sha256": "82808329b2192650e15edc6c359d54c477bdca8ed24285507fdd7b787e020865",
+    "prompt_template_sha256": "9999e41ce022386a4277dfeb44cc6b6b57ca82016d7737f84094b12a94ce91df",
+    "prompt_template_version": "ira.prompt.v1",
+    "provider": "Anthropic Messages API (api.anthropic.com)",
+    "request_path": "demo/live/request.json",
+    "request_sha256": "be5953595d1f8ebda32f84b0d74d1279f99a35e4e6a515ef58da9ac4f8b583c7",
+    "requests": 1,
+    "run_id": "live-sonnet55-001",
+    "sdk": "anthropic==2.8.0",
+    "source_sha256": "1f3575c3ae367954304f85dd90216bde19c83fb1d847297ed2c17ef6eaebe288",
+    "system_prompt": null,
+    "thinking": "model default (adaptive)",
+    "timeout_s": 120,
+    "tools": null
+  },
+  "code_commit": "5e08dc5dd20ef6c8346f5f217f4fe51b5f23808e",
+  "label": "PAID MODEL CALL APPROVAL REQUEST: one Messages API request under a supervised local procedure; does not authorize executing the response",
+  "not_verified_before_approval": [
+    "account access, credits and the model's availability to this account",
+    "actual charges: the estimate and the estimate threshold are not provider-side limits; only a Console spend limit is",
+    "that the Console spend limit is set"
+  ],
+  "operator_approval": {
+    "approved": false,
+    "approved_at": null,
+    "approved_by": null,
+    "statement": null
+  },
+  "schema_version": "ira.live_approval.v1",
+  "single_use": {
+    "mechanism": "local ledger: an atomic exclusive marker named after approval_id, created outside the checkout immediately before the request is sent",
+    "procedure": "one operator, one machine, one attempt. Any second attempt, including after a timeout, crash or otherwise ambiguous outcome, needs a newly prepared packet (new approval_id) and fresh explicit operator approval.",
+    "scope": "this operator machine and ledger directory only; NOT enforced globally"
+  },
+  "spending_limit": {
+    "estimate_threshold_meaning": "this code refuses to send if its own pre-call ESTIMATE exceeds this value; it is not a limit on what the provider can charge",
+    "per_request_estimate_threshold_usd": "0.25",
+    "provider_side_limit": "a Claude Console workspace spend limit, set by the operator; this code cannot verify it",
+    "recommended_console_workspace_spend_limit_usd": "1.00",
+    "source": "https://platform.claude.com/docs/en/api/rate-limits#setting-your-own-spend-limit"
+  },
+  "status": "awaiting_operator_approval",
+  "what_approval_authorizes": [
+    "one Messages API request with the bound parameters, from the bound commit, following the bound procedure",
+    "recording the bounded response and writing a review packet"
+  ],
+  "what_approval_does_not_authorize": [
+    "executing the response or any code derived from it",
+    "retries or additional requests",
+    "creating a pull request or merging anything"
+  ]
+}

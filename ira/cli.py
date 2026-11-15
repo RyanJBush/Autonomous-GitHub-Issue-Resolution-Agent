@@ -1,4 +1,5 @@
-"""Command line: python -m ira {build-demo,build-runner-image,run,eval,verify-packet,prepare-live-approval}.
+"""Command line: python -m ira {build-demo,build-runner-image,run,eval,verify-packet,prepare-live-approval,
+check-operator-env}.
 
 Exit codes: 0 success (run: a packet was written, whatever its status; eval: every case matched),
 1 eval mismatch or packet verification failure, 2 invalid request or usage.
@@ -27,6 +28,11 @@ def main(argv=None) -> int:
     r.add_argument("--approval-packet", help="operator-approved packet from prepare-live-approval")
     r.add_argument("--spent-ledger", help="single-use ledger directory outside the checkout "
                                           "(default: $XDG_STATE_HOME or ~/.local/state, then ira/live-approvals)")
+    r.add_argument("--api-key-prompt", action="store_true",
+                   help="live only, required: read the API key with a hidden prompt (never from args or env)")
+    c = sub.add_parser("check-operator-env", help="verify the operator machine for the one live call (no key, no network)")
+    c.add_argument("--request", default="demo/live/request.json")
+    c.add_argument("--spent-ledger")
     a = sub.add_parser("prepare-live-approval", help="write the approval packet for one live request (no network)")
     a.add_argument("--request", required=True)
     a.add_argument("--out", required=True)
@@ -47,6 +53,15 @@ def main(argv=None) -> int:
         from . import imagebuild
         print(json.dumps(imagebuild.build()))
         return 0
+    if args.cmd == "check-operator-env":
+        from .operator_check import run_checks
+        rows = run_checks(args.request, args.spent_ledger)
+        for row in rows:
+            print(f"{'PASS' if row['ok'] else 'FAIL'}  {row['check']}: {row['detail']}")
+        failed = [r["check"] for r in rows if not r["ok"]]
+        print("operator environment: " + ("READY (no key was read and no request was made)" if not failed
+                                          else f"NOT READY ({len(failed)} failed)"))
+        return 0 if not failed else 1
     if args.cmd == "prepare-live-approval":
         from . import approval
         try:
@@ -79,6 +94,16 @@ def main(argv=None) -> int:
             if _P(args.out).resolve().is_relative_to(PROJECT_ROOT):
                 print("live call refused before any request: --out must be outside the checkout", file=sys.stderr)
                 return 2
+            import os as _os
+            present = [v for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN") if _os.environ.get(v)]
+            if not args.api_key_prompt or present:
+                print("live call refused before any request: use --api-key-prompt and unset "
+                      + (", ".join(present) if present else "any ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN"),
+                      file=sys.stderr)
+                return 2
+            if not sys.stdin.isatty():
+                print("live call refused before any request: an interactive terminal is required", file=sys.stderr)
+                return 2
             try:
                 live_approval = approval.verify(args.approval_packet, args.request)
                 ledger = SingleUseLedger(args.spent_ledger or default_ledger_dir())
@@ -87,12 +112,25 @@ def main(argv=None) -> int:
             except (approval.ApprovalError, RequestError, LedgerError) as error:
                 print(f"live call refused before any request: {error}", file=sys.stderr)
                 return 2
+            import getpass
+            from .live_adapter import LiveAdapter, prompted_client_factory
+            key = getpass.getpass("Anthropic API key (input hidden; it is not stored): ").strip()
+            if not key.startswith("sk-ant-"):
+                print("live call refused before any request: input does not look like an Anthropic API key "
+                      "(it was not echoed or stored)", file=sys.stderr)
+                return 2
+            live_factory = prompted_client_factory(key)
+            del key  # the factory closure keeps the only reference, in this process's memory
         if args.execute:
             from .synthetic_exec import DockerExecutor
             executor = DockerExecutor(demo_repo.load_pinned())
         try:
+            kwargs = {}
+            if args.live:
+                kwargs = {"adapter_factory": lambda spec: LiveAdapter(spec, client_factory=live_factory),
+                          "single_use": ledger}
             pkt, run_dir = runner.execute(args.request, args.out, executor=executor, live_approval=live_approval,
-                                          single_use=ledger if args.live else None)
+                                          **kwargs)
         except RequestError as error:
             print(f"request rejected: {error}", file=sys.stderr)
             return 2

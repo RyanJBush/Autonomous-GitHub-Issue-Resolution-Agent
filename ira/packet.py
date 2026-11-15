@@ -84,7 +84,7 @@ def render_markdown(p: dict) -> str:
                 f"- Request sent: {live.get('request_sent')}; outcome: {code_span(live.get('adapter_outcome'), 80)}; "
                 f"stop reason: {code_span(live.get('stop_reason'), 40)}",
                 f"- max_tokens {live.get('max_tokens')}, effort {code_span(live.get('effort'), 10)}, retries 0, "
-                f"tools none, fallbacks none; cost cap ${live.get('cost_cap_usd')}",
+                f"tools none, fallbacks none; estimate threshold ${live.get('estimate_threshold_usd')}",
                 f"- Usage: {code_span(json.dumps(live.get('usage'), sort_keys=True), 300)}"]
         est = live.get("pre_call_estimate")
         if est:

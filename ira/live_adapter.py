@@ -23,9 +23,19 @@ def _sdk_version() -> str | None:
         return None
 
 
-def default_client_factory(spec):
+PROVIDER_BASE_URL = "https://api.anthropic.com"  # pinned so an ambient ANTHROPIC_BASE_URL cannot redirect the key
+
+
+def default_client_factory(spec, api_key: str | None = None):
+    """Client for the one request. With `api_key` (the CLI's hidden prompt) the key never enters the environment.
+    Without it the SDK resolves credentials itself (used only by offline tests with a dummy key)."""
     import anthropic  # imported only when a live call is actually being made
-    return anthropic.Anthropic(max_retries=0, timeout=float(spec.timeout_s))
+    return anthropic.Anthropic(api_key=api_key, base_url=PROVIDER_BASE_URL, max_retries=0,
+                               timeout=float(spec.timeout_s))
+
+
+def prompted_client_factory(api_key: str):
+    return lambda spec: default_client_factory(spec, api_key=api_key)
 
 
 def classify_api_error(error: Exception) -> str:
@@ -96,7 +106,7 @@ class LiveAdapter:
                        "requested_model": spec.model, "authorized_response_models": list(spec.authorized_response_models),
                        "max_tokens": spec.max_tokens, "effort": spec.effort, "timeout_s": spec.timeout_s,
                        "max_retries": 0, "tools": None, "fallbacks": None, "system_prompt": None,
-                       "cost_cap_usd": f"{spec.cost_cap_cents / 100:.2f}", "request_sent": False}
+                       "estimate_threshold_usd": f"{spec.estimate_threshold_cents / 100:.2f}", "request_sent": False}
 
     def identity(self) -> dict:
         return {"kind": "live_model", "name": "AnthropicMessagesAdapter", "label": LIVE_LABEL,
@@ -114,8 +124,8 @@ class LiveAdapter:
         prompt_bytes = len(prompt.encode("utf-8"))
         est = pricing.estimate_call(self.spec.model, prompt_bytes, self.spec.max_tokens)
         self.record["pre_call_estimate"] = est
-        if not pricing.within_cap(est, self.spec.cost_cap_cents):
-            self._fail("cost_estimate_exceeds_cap", "pre-call estimate exceeds the request cost cap; no request sent")
+        if not pricing.within_cap(est, self.spec.estimate_threshold_cents):
+            self._fail("cost_estimate_exceeds_threshold", "pre-call estimate exceeds the request estimate threshold; no request sent")
         if self.before_send is None:
             self._fail("single_use_claim_missing", "no single-use claim configured; refusing to send")
         try:  # constructing the client makes no request; a failure here must not consume the approval

@@ -57,8 +57,8 @@ def _bindings(request_path: Path) -> dict:
     pb = text.encode("utf-8")
     a = req.adapter
     est = pricing.estimate_call(a.model, len(pb), a.max_tokens)
-    if not pricing.within_cap(est, a.cost_cap_cents):
-        raise ApprovalError("estimate_exceeds_request_cap")
+    if not pricing.within_cap(est, a.estimate_threshold_cents):
+        raise ApprovalError("estimate_exceeds_threshold")
     proc = PROJECT_ROOT / PROCEDURE_PATH
     return {
         "request_path": str(Path(request_path).resolve().relative_to(PROJECT_ROOT))
@@ -73,7 +73,7 @@ def _bindings(request_path: Path) -> dict:
         "model": a.model, "authorized_response_models": list(a.authorized_response_models),
         "max_tokens": a.max_tokens, "effort": a.effort, "timeout_s": a.timeout_s, "thinking": "model default (adaptive)",
         "tools": None, "system_prompt": None, "fallbacks": None, "max_retries": 0, "requests": 1,
-        "cost_cap_usd": f"{a.cost_cap_cents / 100:.2f}", "estimate": est,
+        "estimate_threshold_usd": f"{a.estimate_threshold_cents / 100:.2f}", "estimate": est,
         "adapter_version": ADAPTER_VERSION, "sdk": SDK_PIN,
         "procedure_path": PROCEDURE_PATH,
         "procedure_sha256": hashlib.sha256(proc.read_bytes()).hexdigest() if proc.is_file() else None,
@@ -103,9 +103,12 @@ def prepare(request_path: Path, out_path: Path, *, console_spend_limit_usd: str 
                          "fresh explicit operator approval.",
         },
         "spending_limit": {
-            "per_request_cap_usd": None, "recommended_console_workspace_spend_limit_usd": console_spend_limit_usd,
-            "note": "Set an independent workspace spend limit in the Claude Console before approving "
-                    "(platform.claude.com/settings/spend-limits); this code cannot verify that it is set.",
+            "per_request_estimate_threshold_usd": None,
+            "estimate_threshold_meaning": "this code refuses to send if its own pre-call ESTIMATE exceeds this value; "
+                                          "it is not a limit on what the provider can charge",
+            "provider_side_limit": "a Claude Console workspace spend limit, set by the operator; this code cannot "
+                                   "verify it",
+            "recommended_console_workspace_spend_limit_usd": console_spend_limit_usd,
             "source": pricing.SOURCES["spend_limits"]},
         "what_approval_authorizes": [
             "one Messages API request with the bound parameters, from the bound commit, following the bound procedure",
@@ -118,12 +121,12 @@ def prepare(request_path: Path, out_path: Path, *, console_spend_limit_usd: str 
         ],
         "not_verified_before_approval": [
             "account access, credits and the model's availability to this account",
-            "actual charges: the estimate and the request cap are not provider-side limits",
+            "actual charges: the estimate and the estimate threshold are not provider-side limits; only a Console spend limit is",
             "that the Console spend limit is set",
         ],
         "operator_approval": {"approved": False, "approved_by": None, "approved_at": None, "statement": None},
     }
-    packet["spending_limit"]["per_request_cap_usd"] = packet["binds"]["cost_cap_usd"]
+    packet["spending_limit"]["per_request_estimate_threshold_usd"] = packet["binds"]["estimate_threshold_usd"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(packet, indent=2, sort_keys=True) + "\n")
     return packet

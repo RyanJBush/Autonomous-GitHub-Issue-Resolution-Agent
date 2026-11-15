@@ -41,7 +41,7 @@
     "max_tokens": 8000,
     "effort": "medium",
     "timeout_s": 120,
-    "cost_cap_cents": 25,
+    "estimate_threshold_cents": 25,
     "authorized_response_models": [
       "claude-sonnet-5-5"
     ]

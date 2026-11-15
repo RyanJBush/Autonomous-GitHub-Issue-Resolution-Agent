@@ -187,7 +187,7 @@ class LiveAdapterSpec(_Strict):
     max_tokens: Annotated[int, Field(ge=256, le=caps.LIVE_MAX_TOKENS)]
     effort: Literal["low", "medium", "high"]
     timeout_s: Annotated[int, Field(ge=10, le=caps.LIVE_TIMEOUT_S)]
-    cost_cap_cents: Annotated[int, Field(ge=1, le=caps.LIVE_COST_CAP_CENTS)]
+    estimate_threshold_cents: Annotated[int, Field(ge=1, le=caps.LIVE_ESTIMATE_THRESHOLD_CENTS)]
     authorized_response_models: Annotated[list[Annotated[str, Field(min_length=1, max_length=64)]],
                                           Field(min_length=1, max_length=3)]
 

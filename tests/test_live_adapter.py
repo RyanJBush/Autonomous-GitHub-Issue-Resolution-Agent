@@ -17,7 +17,7 @@ from ira.single_use import SingleUseLedger
 
 GOOD_TEXT = (ROOT / "fixtures/responses/good_trim_collapse.json").read_text()
 LIVE = {"kind": "live_model", "model": "claude-sonnet-5-5", "max_tokens": 8000, "effort": "medium", "timeout_s": 120,
-        "cost_cap_cents": 25, "authorized_response_models": ["claude-sonnet-5-5"]}
+        "estimate_threshold_cents": 25, "authorized_response_models": ["claude-sonnet-5-5"]}
 REQ = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 
 
@@ -167,9 +167,9 @@ def test_oversized_and_malformed_outputs_are_honest_results(built_repo, tmp_path
     assert (pkt["terminal_status"], pkt["status_reason"]) == ("rejected_schema", "invalid_json")
 
 
-def test_cost_cap_refuses_before_any_request(built_repo, tmp_path):
-    pkt, _, client = run_live(tmp_path, built_repo, message(), cost_cap_cents=1)
-    assert (pkt["terminal_status"], pkt["status_reason"]) == ("adapter_error", "cost_estimate_exceeds_cap")
+def test_estimate_threshold_refuses_before_any_request(built_repo, tmp_path):
+    pkt, _, client = run_live(tmp_path, built_repo, message(), estimate_threshold_cents=1)
+    assert (pkt["terminal_status"], pkt["status_reason"]) == ("adapter_error", "cost_estimate_exceeds_threshold")
     assert client.calls == [] and pkt["adapter"]["live"]["request_sent"] is False
 
 
@@ -212,7 +212,7 @@ def test_one_request_per_adapter_and_client_configuration(monkeypatch):
 
 def test_request_schema_limits(built_repo, tmp_path):
     base = json.loads(live_request(tmp_path, built_repo).read_text())
-    for bad in ({"model": "claude-opus-5-5"}, {"max_tokens": 9000}, {"cost_cap_cents": 26}, {"effort": "max"},
+    for bad in ({"model": "claude-opus-5-5"}, {"max_tokens": 9000}, {"estimate_threshold_cents": 26}, {"effort": "max"},
                 {"authorized_response_models": ["claude-opus-5-5"]}, {"timeout_s": 301}, {"tools": []}):
         req = {**base, "adapter": {**base["adapter"], **bad}}
         with pytest.raises(RequestError):
@@ -283,8 +283,8 @@ def test_timeout_consumes_the_approval(built_repo, tmp_path):
 
 def test_refusals_before_sending_do_not_consume(built_repo, tmp_path):
     ledger = SingleUseLedger(tmp_path / "ledger")
-    pkt, _, c = run_live(tmp_path / "a", built_repo, message(), ledger=ledger, approval_id="3" * 32, cost_cap_cents=1)
-    assert pkt["status_reason"] == "cost_estimate_exceeds_cap" and not ledger.is_used("3" * 32) and c.calls == []
+    pkt, _, c = run_live(tmp_path / "a", built_repo, message(), ledger=ledger, approval_id="3" * 32, estimate_threshold_cents=1)
+    assert pkt["status_reason"] == "cost_estimate_exceeds_threshold" and not ledger.is_used("3" * 32) and c.calls == []
 
 
 def _claim(args):

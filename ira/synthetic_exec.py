@@ -27,6 +27,11 @@ class ExecutionReport:
     candidate: dict | None = None
 
 
+IMAGE_TRUST_NOTE = ("The image id and the self-declared ira.inputs_sha256 label support traceability only. They do not "
+                    "independently prove the image was built from the pinned inputs; image ids are not reproducible "
+                    "across builds.")
+
+
 def runner_image_tag(pinned: dict) -> str:
     return f"ira-runner:{pinned['runner']['image_inputs_sha256'][:12]}"
 
@@ -63,7 +68,8 @@ class DockerExecutor:
             return rep
         image_id, image_env = img["Id"], list((img.get("Config") or {}).get("Env") or [])
         rep.image = {"tag": tag, "id": image_id, "inputs_sha256": labels["ira.inputs_sha256"],
-                     "base_image": self.pinned["runner"]["base_image"]}
+                     "base_image": self.pinned["runner"]["base_image"],
+                     "trust_note": IMAGE_TRUST_NOTE}
 
         work = execution.new_work_root()
         try:
@@ -81,11 +87,7 @@ class DockerExecutor:
 
             # 1. Probe: same flags and mounts as the test containers; trusted probe script only.
             probe = self._run("probe", base_tree, execution.PROBE_COMMAND, execution.PROBE_TIMEOUT_S, common, rep)
-            if probe.config_failures:
-                rep.reason = "probe_config:" + ",".join(probe.config_failures)
-                return rep
-            if not probe.cleanup_ok:
-                rep.status, rep.reason = Status.EXECUTION_ERROR, "probe_cleanup_failed"
+            if self._gate(probe, rep):
                 return rep
             report = None
             if probe.exit_code == 0 and not probe.timed_out and not probe.output_limit_exceeded:
@@ -108,8 +110,7 @@ class DockerExecutor:
 
             # 2. Baseline on the pinned base tree.
             base = self._run("baseline", base_tree, execution.TEST_COMMAND, limits.timeout_s, common, rep)
-            if base.config_failures:
-                rep.reason = "baseline_config:" + ",".join(base.config_failures)
+            if self._gate(base, rep):
                 return rep
             bo = decide_baseline(base, tt["test_ids"], tt["expected_base_failures"])
             rep.baseline = self._record(base, bo)
@@ -119,8 +120,7 @@ class DockerExecutor:
 
             # 3. Candidate on the tree built only from the verified base and the verified patch result.
             cand = self._run("candidate", cand_tree, execution.TEST_COMMAND, limits.timeout_s, common, rep)
-            if cand.config_failures:
-                rep.reason = "candidate_config:" + ",".join(cand.config_failures)
+            if self._gate(cand, rep):
                 return rep
             rep.candidate_executed = cand.started
             co = decide_candidate(cand, tt["test_ids"])
@@ -129,6 +129,27 @@ class DockerExecutor:
             return rep
         finally:
             execution.remove_work(work)
+
+    @staticmethod
+    def _gate(res, rep) -> bool:
+        """Applied to every created container, in this order. Returns True when the run must stop here.
+
+        1. Cleanup failure takes precedence (execution_error), keeping any configuration failure or timeout in the
+           reason; the full container record (config failures and cleanup detail) is already in rep.containers.
+        2. A configuration failure on a cleaned-up container blocks the run (blocked_boundary_unverified).
+        """
+        if not res.cleanup_ok:
+            reason = f"{res.role}_cleanup_failed"
+            if res.config_failures:
+                reason += "_after_config_failure:" + ",".join(res.config_failures)
+            elif res.timed_out:
+                reason += "_after_timeout"
+            rep.status, rep.reason = Status.EXECUTION_ERROR, reason
+            return True
+        if res.config_failures:
+            rep.status, rep.reason = Status.BLOCKED_BOUNDARY_UNVERIFIED, f"{res.role}_config:" + ",".join(res.config_failures)
+            return True
+        return False
 
     def _run(self, role, tree, command, deadline, common, rep):
         self.calls_create += 1

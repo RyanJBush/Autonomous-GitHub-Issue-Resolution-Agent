@@ -42,8 +42,12 @@ and prints one JSON envelope.
    in the packet only when an environment check fails.
 5. **While running:** stdout (640 KiB) and stderr (64 KiB) are capped while reading; the container is killed when a cap
    is exceeded or the host deadline expires.
-6. **Cleanup:** `docker rm -f`, then `docker ps -a` filtered by the run and nonce labels must be empty. A failed cleanup
-   is `execution_error`.
+6. **Cleanup:** `docker rm -f`, then `docker ps -a` filtered by the run and nonce labels must be empty. For every
+   created container (probe, baseline, candidate) the stage gate applies this order: a failed cleanup is
+   `execution_error` (`<role>_cleanup_failed`, with `_after_config_failure:<checks>` or `_after_timeout` appended when
+   those also occurred) and takes precedence over a configuration failure; only a configuration failure on a cleaned-up
+   container gives `blocked_boundary_unverified`. The packet keeps both the configuration failures and the cleanup
+   detail for that container, and the trace has `config_failed` and `cleanup_ok`/`cleanup_failed` events for each.
 
 ## Local observations (trusted synthetic checks, 2026-11-15)
 
@@ -90,6 +94,6 @@ on this runner are evidence about this run's containers, not proof that model-ge
 | Job token on the hosted runner | `actions/checkout` needs `contents: read` for this private repository; the token exists for the job's duration | Not mounted or passed into containers; with `persist-credentials: false` it is not written to `.git/config`. A container escape on the runner could reach runner processes that hold it |
 | Runner user can use the Docker socket | GitHub-hosted runners put the runner user in the `docker` group | The socket is root-equivalent on the runner VM; it is not mounted into containers (checked) |
 | In-process tampering | Candidate code is imported by the pytest process and shares a uid with the wrapper | JUnit, exit codes and output are candidate-influenced evidence for human review only |
-| Resource limits | Observed and exercised (timeout, OOM, output cap, fork burst) with synthetic fixtures | Not proven complete against hostile code |
-| Image build is not byte-reproducible | Two local builds from identical pinned inputs produced different image ids | Inputs are pinned by hash and labeled; each packet records the image id actually used |
+| Resource limits | Timeout, OOM and output cap were exercised with synthetic fixtures; the pids limit is reported by the probe as configured. The fork-burst fixture's outcome is recorded but does not establish that any fork was refused | Not proven complete against hostile code |
+| Runner image provenance | Builds from identical pinned inputs produced different image ids (four distinct ids observed locally and on the hosted runner). The `ira.inputs_sha256` label is written by our own build command and checked at run time, but it is self-declared | The recorded image id and label support traceability only; they do **not** independently prove the image was built from the pinned inputs. Acceptable for synthetic checks; every packet states this in `execution.image.trust_note` |
 | Supply chain | Base image pinned by digest; wheels pinned by hash (trust on first use) | A compromised upstream at pin time would be inherited |

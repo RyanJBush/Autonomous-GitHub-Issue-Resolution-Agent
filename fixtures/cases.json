@@ -110,7 +110,7 @@
       "issue_variant": "clean",
       "expected_m2_status": "tests_passed_awaiting_human_review",
       "expected_m2_reason": "all_expected_tests_passed",
-      "note": "forks until the pids limit refuses, then provides the fix",
+      "note": "attempts up to 200 forks, then provides the fix; its outcome does not show that any fork was refused (the probe reports the configured pids limit)",
       "file": "m2_fork_burst.json"
     },
     {

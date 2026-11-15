@@ -110,7 +110,7 @@ case("m2_fork_burst", "m2_resource", B, EBU,
          "import os as _os  # SYNTHETIC fork burst, bounded by the pids limit\n",
          "for _i in range(200):\n", "    try:\n", "        if _os.fork() == 0:\n", "            _os._exit(0)\n",
          "    except OSError:\n", "        break\n"]), 1)))),
-     m2=TP, m2_reason=PASS, note="forks until the pids limit refuses, then provides the fix")
+     m2=TP, m2_reason=PASS, note="attempts up to 200 forks, then provides the fix; its outcome does not show that any fork was refused (the probe reports the configured pids limit)")
 case("m2_output_flood", "m2_output", B, EBU,
      js(proposal(udiff(replace_line(6, FIX).replace(BASE_LINES[0], BASE_LINES[0] + "".join([
          "import atexit as _atexit, sys as _sys  # SYNTHETIC output flood after pytest finishes\n",

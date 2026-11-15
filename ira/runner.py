@@ -30,6 +30,8 @@ RESIDUAL_RISKS_M2 = [
     "Candidate code runs inside the pytest process and can forge exit codes, JUnit XML and output.",
     "Resource limits are observed and tested with synthetic fixtures, not proven complete.",
     "Passing probes describe this run on this host only; they do not verify isolation for model-generated code.",
+    "The runner image id and its self-declared inputs label give traceability, not independent proof that the image "
+    "was built from the pinned inputs.",
 ]
 
 LIMITATIONS_M2 = [
@@ -247,10 +249,10 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
                    "candidate_executed": rep.candidate_executed, "host": rep.host, "image": rep.image,
                    "probe": rep.probe, "containers": rep.containers}
     r.tests = {"baseline": rep.baseline, "candidate": rep.candidate}
-    for stage in ("probe", "baseline", "candidate"):
-        recs = [c for c in rep.containers if c["role"] == stage]
-        if recs:
-            r.event(stage, "finished", "cleanup_ok" if recs[0]["cleanup_ok"] else "cleanup_failed")
+    for rec in rep.containers:  # every created container: configuration result, then cleanup result
+        if rec["config_failures"]:
+            r.event(rec["role"], "config_failed", ",".join(rec["config_failures"]))
+        r.event(rec["role"], "cleanup_ok" if rec["cleanup_ok"] else "cleanup_failed", rec["cleanup_detail"][:120])
     r.decide("synthetic_execution", "pass" if rep.status is Status.TESTS_PASSED_AWAITING_HUMAN_REVIEW else "fail",
              rep.reason)
     r.event("execution", "verdict", rep.reason)

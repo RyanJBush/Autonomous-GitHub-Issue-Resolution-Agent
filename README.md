@@ -52,6 +52,28 @@ request, in issue text, or in the allowlisted source file. The packet code does 
 a test checks that planted environment variables do not appear in fixture packets; that test is **not** a general
 secret-redaction guarantee.
 
+## Local model demonstration (in development)
+
+The Ollama adapter uses an installed `qwen3:4b` model on `127.0.0.1:11434`; no API key or
+model API charge is needed. The demonstration is deliberately limited to one preselected return
+statement in the synthetic `src/labels.py` issue. The model proposes a return statement; the
+adapter inserts it into the pinned source and derives a unified diff. The raw model output,
+model digest, actual prompt hash and transformation are recorded separately. This is not a
+general-purpose issue resolver. Model output is untrusted and is never executed during generation.
+The [local run record](docs/LOCAL_RUN.md) preserves the observed proposal and failed attempts.
+
+```bash
+python -m ira build-demo --dest /tmp/ira-demo-repo
+python -m ira run --request demo/local/request.json --out /tmp/ira-local-output
+```
+
+The example pins the digest of the model used in the recorded local experiment. If your local
+model has a different digest, create a request outside the checkout with the digest from Ollama's
+`/api/tags`; do not silently substitute a different model. Each run makes one generation request;
+different run IDs are separate attempts. Testing a real proposal requires a separate review of the
+whole resulting file and explicit operator approval of its exact hashes. The existing Docker checks
+do not establish safe isolation for arbitrary model-generated code.
+
 ## Pipeline
 
 ```

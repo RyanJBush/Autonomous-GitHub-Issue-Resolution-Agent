@@ -1,0 +1,31 @@
+{
+  "base_commit": "eb455af5a468dc06630d0758f6989490fc2ddcfd",
+  "label": "RECORDED LIVE MODEL RESPONSE: real model output; not synthetic",
+  "live": {
+    "actual_prompt_sha256": "878e7347509018cb395999031ac557e40c4276ff45b98201627aecd64f691ca3",
+    "done_reason": "stop",
+    "duration_ns": 8184015900,
+    "model_digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+    "provider": "local Ollama",
+    "raw_model_response": "{\n  \"replacement_return\": \"return ' '.join(text.split()).lower()\",\n  \"summary\": \"The original function simply returned the lowercase version of the input text without trimming or collapsing whitespace. The fix uses text.split() to collapse all whitespace into a single space, then applies lower() to ensure lowercase.\",\n  \"assumptions\": [\n    \"The input text is a string\",\n    \"The split() method will handle all whitespace characters (including tabs and multiple spaces) into a single space\",\n    \"The lower() method is called after whitespace collapsing to ensure the result is lowercase\"\n  ]\n}",
+    "raw_model_sha256": "2c70bc3143f5a5a3065b634f4fab334fbcf3dd21a69a5c3c4d826018655889e5",
+    "request_sent": true,
+    "requested_model": "qwen3:4b",
+    "response_model": "qwen3:4b",
+    "transformation": "model-proposed single return statement inserted into pinned source and converted to unified diff by Python difflib",
+    "usage": {
+      "input_tokens": 291,
+      "output_tokens": 124
+    }
+  },
+  "live_run_id": "local-qwen3-011",
+  "prompt_sha256": "82808329b2192650e15edc6c359d54c477bdca8ed24285507fdd7b787e020865",
+  "prompt_template_sha256": "9999e41ce022386a4277dfeb44cc6b6b57ca82016d7737f84094b12a94ce91df",
+  "prompt_template_version": "ira.prompt.v1",
+  "raw_bytes": 968,
+  "raw_sha256": "dda063e3852fafe006fb6c8a69fe89ade6799159792611f32ecb178873b555f9",
+  "raw_text": "{\"schema_version\": \"ira.response.v1\", \"outcome\": \"propose\", \"base_commit\": \"eb455af5a468dc06630d0758f6989490fc2ddcfd\", \"diff\": \"--- a/src/labels.py\\n+++ b/src/labels.py\\n@@ -3,7 +3,7 @@\\n \\n def normalize_label(text: str) -> str:\\n     \\\"\\\"\\\"Return a canonical label: lower-case, trimmed, internal whitespace collapsed to one space.\\\"\\\"\\\"\\n-    return text.lower()\\n+    return ' '.join(text.split()).lower()\\n \\n \\n def is_valid_label(text: str) -> bool:\\n\", \"summary\": \"The original function simply returned the lowercase version of the input text without trimming or collapsing whitespace. The fix uses text.split() to collapse all whitespace into a single space, then applies lower() to ensure lowercase.\", \"assumptions\": [\"The input text is a string\", \"The split() method will handle all whitespace characters (including tabs and multiple spaces) into a single space\", \"The lower() method is called after whitespace collapsing to ensure the result is lowercase\"]}",
+  "recorded_at": "2026-11-15T05:17:15Z",
+  "request_sha256": "a174a32c17f21d5c71f05bb698806d6b645d159561a6f906ecafed3171f561d5",
+  "schema_version": "ira.recording.v1"
+}

@@ -32,3 +32,5 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 
 Running totals: Claude measured ≈ 82.6 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7 + 3.5 + 5.7 + 2.7 + 5.0); Claude estimated additions ≈ 49 min;
 Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus unmeasured review and reasoning time.
+
+| 2026-11-15 | Codex | Local Ollama adapter, local model attempts, evidence and checks (05:07–05:19 UTC) | ~12 min wall-clock, approximate | Earlier Codex review and reasoning remains unmeasured |

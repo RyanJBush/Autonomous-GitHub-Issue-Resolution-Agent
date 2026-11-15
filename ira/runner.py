@@ -36,7 +36,7 @@ RESIDUAL_RISKS_M2 = [
 
 LIMITATIONS_M2 = [
     "Milestone 2: only hand-reviewed synthetic fixtures, bound by exact bytes, can reach the executor.",
-    "No live model adapter exists; live or replayed responses are never executed.",
+    "Model responses require explicit review and authorization before replay execution.",
     "Test results are candidate-influenced evidence for human review, not proof of correctness or safety.",
     "Scratch application is a controlled git file operation, not a sandbox.",
     "A passing result authorizes no PR or merge.",
@@ -44,7 +44,7 @@ LIMITATIONS_M2 = [
 
 LIMITATIONS_M1 = [
     "Milestone 1: no candidate code is executed; trusted tests are not run.",
-    "No live model adapter exists in Milestone 1; fixture runs are synthetic and prove nothing about model quality.",
+    "Offline mode does not execute model-generated code; synthetic fixtures do not measure model quality.",
     "Scratch application is a controlled git file operation, not a sandbox.",
     "No execution boundary (sandbox) is verified by Milestone 1.",
     "A future passing test is evidence for human review only; it authorizes no PR or merge.",
@@ -54,6 +54,9 @@ LIMITATIONS_M1 = [
 def default_adapter_factory(spec):
     if spec.kind == "synthetic_fixture":
         return FixtureAdapter(spec.fixture_case)
+    if spec.kind == "local_model":
+        from .ollama_adapter import OllamaAdapter
+        return OllamaAdapter(spec)
     if spec.kind == "live_model":
         from .live_adapter import LiveAdapter
         return LiveAdapter(spec)
@@ -200,7 +203,7 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
         _unavail_from(r, "response", f"adapter error: {error.code}")
         return Status.ADAPTER_ERROR, error.code
     r.live = getattr(adapter, "record", None)
-    if req.adapter.kind == "live_model":
+    if req.adapter.kind in ("live_model", "local_model"):
         from .replay import write_recording
         try:
             path, digest = write_recording(r.recording_dir, run_id=req.run_id, raw=raw, live_record=r.live or {},
@@ -408,5 +411,5 @@ def _objective(kind: str, status: Status, reason: str) -> dict:
     if kind == "replay_recording" and status is Status.TESTS_PASSED_AWAITING_HUMAN_REVIEW:
         return {"status": "evaluated_awaiting_human_review",
                 "reason": "a real recorded proposal passed the trusted tests; human review is still required"}
-    what = "live responses are never executed" if kind == "live_model" else "the replay was not evaluated to a pass"
+    what = "model responses are never executed without review" if kind in ("live_model", "local_model") else "the replay was not evaluated to a pass"
     return {"status": "not_met", "reason": f"{what}; observed result: {status.value} ({reason})"}

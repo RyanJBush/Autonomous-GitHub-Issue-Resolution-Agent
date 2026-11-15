@@ -28,6 +28,7 @@ NULLABLE_FIELDS = ("base", "prompt", "response", "parsed_response", "patch", "ap
 RUN_KIND_LABELS = {
     "synthetic_fixture": "SYNTHETIC: hand-written fixture output; no model was called",
     "live_model": "LIVE MODEL RUN",
+    "local_model": "LOCAL MODEL RUN: actual Ollama generation; no API charge",
     "replay_recording": "REPLAY of a recorded live model response",
 }
 
@@ -78,7 +79,15 @@ def render_markdown(p: dict) -> str:
     out += ["## Adapter", "", f"- Kind: {code_span(ad.get('kind'), 40)}; name: {code_span(ad.get('name'), 80)};"
             f" model: {code_span(ad.get('model'), 80)}; calls: {ad.get('calls')}"]
     live = ad.get("live")
-    if live:
+    if live and p["run_kind"] == "local_model":
+        out += [f"- Local model digest: {code_span(live.get('model_digest'), 64)}",
+                f"- Actual local prompt SHA-256: {code_span(live.get('actual_prompt_sha256'), 64)}",
+                f"- Raw model output SHA-256: {code_span(live.get('raw_model_sha256'), 64)}",
+                f"- Transformation: {visible(live.get('transformation'), L)}"]
+        raw_local, truncated = visible_block(live.get('raw_model_response', ''), 4000)
+        out += ["", "Actual local model response" + (" (truncated)" if truncated else "") + ":", "",
+                fenced(raw_local, "json")]
+    elif live:
         out += [f"- Requested model: {code_span(live.get('requested_model'), 64)}; returned model: "
                 f"{code_span(live.get('response_model'), 64)}; request id: {code_span(live.get('request_id'), 80)}",
                 f"- Request sent: {live.get('request_sent')}; outcome: {code_span(live.get('adapter_outcome'), 80)}; "
@@ -115,7 +124,7 @@ def render_markdown(p: dict) -> str:
         out.append(f"- Parsed response unavailable: {visible(p['unavailable'].get('parsed_response'), L)}")
     if p["response"]:
         text, cut = visible_block(p["response"]["stored_text"], 4000)
-        out += ["", f"Raw response (bounded, escaped{', truncated' if cut else ''}; sha256 "
+        out += ["", f"{'Normalized response (derived diff)' if p['run_kind'] == 'local_model' else 'Raw response'} (bounded, escaped{', truncated' if cut else ''}; sha256 "
                     f"{p['response']['raw_sha256']}):", "", fenced(text, "text")]
     out += ["", "## Policy decisions", ""]
     out += [f"- {code_span(d['check'], 60)}: {d['result']}" + (f" ({code_span(d.get('code'), 80)})" if d.get('code') else "")

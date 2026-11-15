@@ -200,6 +200,13 @@ class LiveAdapterSpec(_Strict):
         return self
 
 
+class LocalAdapterSpec(_Strict):
+    kind: Literal["local_model"]
+    model: Literal["qwen3:4b", "qwen3-coder:latest"]
+    model_digest: Annotated[str, Field(pattern=HEX64)]
+    timeout_s: Annotated[int, Field(ge=10, le=600)]
+
+
 class ReplayAdapterSpec(_Strict):
     kind: Literal["replay_recording"]
     recording_path: Annotated[str, Field(min_length=1, max_length=4096)]
@@ -207,7 +214,7 @@ class ReplayAdapterSpec(_Strict):
     live_run_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")]
 
 
-AdapterSpec = Annotated[Union[SyntheticAdapterSpec, LiveAdapterSpec, ReplayAdapterSpec], Field(discriminator="kind")]
+AdapterSpec = Annotated[Union[SyntheticAdapterSpec, LiveAdapterSpec, LocalAdapterSpec, ReplayAdapterSpec], Field(discriminator="kind")]
 
 
 class RunRequest(_Strict):

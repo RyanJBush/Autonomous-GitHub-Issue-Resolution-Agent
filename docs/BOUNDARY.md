@@ -59,7 +59,27 @@ therefore used for development only (Codex decision).
 
 ## Hosted runner observations
 
-Filled in from an observed GitHub Actions run only; see the handoff for the run id and commit.
+Observed in GitHub Actions run `43673596716`, job `boundary-synthetic` (id `132688888619`), commit
+`03e2fffe2f8931949d02c422f374460efe741a98`, runner image `ubuntu-24.04`:
+
+| Observation | Value |
+|---|---|
+| Kernel | `7.0.0-1014-aws` |
+| Docker client / server | `28.0.4` / `28.0.4`, runtime `runc` |
+| cgroup | v2, driver `systemd`; security options AppArmor, seccomp (builtin profile), cgroupns |
+| Runner image built from pinned inputs | `ira-runner:5f083c95e28e`, id `sha256:13415948…` (differs from local builds: image ids are not reproducible) |
+| Test suite with `IRA_REQUIRE_DOCKER=1` | 431 passed |
+| `ira eval --execute` | matched 82/82 |
+| Leftover containers labeled `ira.run` after the job | none |
+| `GITHUB_TOKEN`, `ACTIONS_RUNTIME_TOKEN`, `ACTIONS_ID_TOKEN_REQUEST_TOKEN`/`_URL`, `ACTIONS_CACHE_URL`, `ACTIONS_RESULTS_URL` in `run` step environment | all absent |
+| `git` `extraheader` after checkout | not configured. The checkout log shows `actions/checkout` wrote the token as an `extraheader` during checkout and removed it before the step ended (`persist-credentials: false`) |
+| Runner user in `docker` group | yes |
+
+Interpretation, limited to what was observed: the job token was not present in `run` step environments or in
+`.git/config` after checkout, and containers received neither (environment built from scratch, binds limited to two
+read-only directories, both checked). The token still exists in the runner's own processes for the job's duration,
+and the runner user controls the Docker socket, so a container escape on this host would reach both. Passing probes
+on this runner are evidence about this run's containers, not proof that model-generated code would be contained.
 
 ## Residual risks
 

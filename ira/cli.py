@@ -1,4 +1,4 @@
-"""Command line: python -m ira {build-demo,build-runner-image,run,eval,verify-packet}.
+"""Command line: python -m ira {build-demo,build-runner-image,run,eval,verify-packet,prepare-live-approval}.
 
 Exit codes: 0 success (run: a packet was written, whatever its status; eval: every case matched),
 1 eval mismatch or packet verification failure, 2 invalid request or usage.
@@ -23,6 +23,11 @@ def main(argv=None) -> int:
     r.add_argument("--out", required=True)
     r.add_argument("--execute", action="store_true",
                    help="trusted synthetic execution in Docker (allowlisted fixtures only)")
+    r.add_argument("--live", action="store_true", help="one paid model request; requires --approval-packet")
+    r.add_argument("--approval-packet", help="operator-approved packet from prepare-live-approval")
+    a = sub.add_parser("prepare-live-approval", help="write the approval packet for one live request (no network)")
+    a.add_argument("--request", required=True)
+    a.add_argument("--out", required=True)
     e = sub.add_parser("eval", help="run every synthetic fixture case")
     e.add_argument("--out", required=True)
     e.add_argument("--execute", action="store_true", help="compare against execute-mode expectations")
@@ -40,19 +45,48 @@ def main(argv=None) -> int:
         from . import imagebuild
         print(json.dumps(imagebuild.build()))
         return 0
+    if args.cmd == "prepare-live-approval":
+        from . import approval
+        try:
+            pkt = approval.prepare(args.request, args.out)
+        except (approval.ApprovalError, RequestError) as error:
+            print(f"approval packet not written: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps({"status": pkt["status"], "request_sha256": pkt["binds"]["request_sha256"],
+                          "estimate_usd": pkt["binds"]["estimate"]["total_usd_estimate"], "out": args.out}))
+        return 0
     if args.cmd == "run":
-        executor = None
+        executor, live_approval = None, None
+        from .models import load_request as _load
+        try:
+            kind = _load(open(args.request, "rb").read()).adapter.kind
+        except RequestError as error:
+            print(f"request rejected: {error}", file=sys.stderr)
+            return 2
+        if (kind == "live_model") != bool(args.live):
+            print("request rejected: --live is required for, and only for, a live_model request", file=sys.stderr)
+            return 2
+        if args.live:
+            from . import approval
+            if not args.approval_packet:
+                print("request rejected: --live requires --approval-packet", file=sys.stderr)
+                return 2
+            try:
+                live_approval = approval.verify(args.approval_packet, args.request)
+            except (approval.ApprovalError, RequestError) as error:
+                print(f"live call refused before any request: {error}", file=sys.stderr)
+                return 2
         if args.execute:
             from .synthetic_exec import DockerExecutor
             executor = DockerExecutor(demo_repo.load_pinned())
         try:
-            pkt, run_dir = runner.execute(args.request, args.out, executor=executor)
+            pkt, run_dir = runner.execute(args.request, args.out, executor=executor, live_approval=live_approval)
         except RequestError as error:
             print(f"request rejected: {error}", file=sys.stderr)
             return 2
         print(json.dumps({"run_id": pkt["run_id"], "run_kind": pkt["run_kind"],
                           "terminal_status": pkt["terminal_status"], "status_reason": pkt["status_reason"],
-                          "packet": str(run_dir)}))
+                          "end_to_end_objective": pkt["end_to_end_objective"]["status"], "packet": str(run_dir)}))
         return 0
     if args.cmd == "eval":
         summary = evaluate.run_eval(args.out, execute=args.execute)

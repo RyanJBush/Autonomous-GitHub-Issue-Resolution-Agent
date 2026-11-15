@@ -175,9 +175,39 @@ class ExecutionLimits(_Strict):
     cpus: Annotated[int, Field(ge=1, le=4)]
 
 
-class AdapterSpec(_Strict):
-    kind: Literal["synthetic_fixture"]  # M1 accepts fixtures only; live and replay adapters arrive in M3
+class SyntheticAdapterSpec(_Strict):
+    kind: Literal["synthetic_fixture"]
     fixture_case: Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_]{0,63}$")]
+
+
+class LiveAdapterSpec(_Strict):
+    """One Messages API request: no tools, no retries, no fallback. Executed responses: never."""
+    kind: Literal["live_model"]
+    model: Annotated[str, Field(min_length=1, max_length=64)]
+    max_tokens: Annotated[int, Field(ge=256, le=caps.LIVE_MAX_TOKENS)]
+    effort: Literal["low", "medium", "high"]
+    timeout_s: Annotated[int, Field(ge=10, le=caps.LIVE_TIMEOUT_S)]
+    cost_cap_cents: Annotated[int, Field(ge=1, le=caps.LIVE_COST_CAP_CENTS)]
+    authorized_response_models: Annotated[list[Annotated[str, Field(min_length=1, max_length=64)]],
+                                          Field(min_length=1, max_length=3)]
+
+    @model_validator(mode="after")
+    def _models(self):
+        if self.model not in caps.LIVE_MODELS:
+            raise ValueError("model is not in the trusted live-model allowlist")
+        if self.model not in self.authorized_response_models:
+            raise ValueError("authorized_response_models must include the requested model")
+        return self
+
+
+class ReplayAdapterSpec(_Strict):
+    kind: Literal["replay_recording"]
+    recording_path: Annotated[str, Field(min_length=1, max_length=4096)]
+    recording_sha256: Annotated[str, Field(pattern=HEX64)]
+    live_run_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")]
+
+
+AdapterSpec = Annotated[Union[SyntheticAdapterSpec, LiveAdapterSpec, ReplayAdapterSpec], Field(discriminator="kind")]
 
 
 class RunRequest(_Strict):

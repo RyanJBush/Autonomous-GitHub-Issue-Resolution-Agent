@@ -3,7 +3,7 @@
 A supervised, bounded MVP: one model proposes one patch for one small issue in one Python file of an explicitly
 synthetic demonstration repository. Trusted code validates the proposal and writes a review packet for a human.
 
-**Status: Milestone 2 (trusted synthetic execution) on branch `m2-execution`, pending Codex review.** What exists and what does not:
+**Status: Milestone 2 accepted (trusted synthetic execution). Milestone 3 offline implementation on branch `m3-live-adapter`: no model has been called.** What exists and what does not:
 
 | Capability | Milestone 1 |
 |---|---|
@@ -13,7 +13,7 @@ synthetic demonstration repository. Trusted code validates the proposal and writ
 | Scratch apply + confirmation with controlled git configuration | Implemented and tested (not a sandbox) |
 | Review packet (JSON + escaped Markdown + manifest) | Implemented and tested |
 | Synthetic fixture adapter and 82-case evaluation (offline and `--execute`) | Implemented; **all fixtures are hand-written, no model is called** |
-| Live model adapter | **Not implemented** (Milestone 3, needs operator approval for any paid call) |
+| Live model adapter (`claude-sonnet-5-5`, one request) and replay | Implemented and tested **offline with a fake client**; no real request has been made. A live call needs an operator-approved packet (`ira prepare-live-approval`); live responses are never executed; a replay executes only with an exact-hash operator approval, and none exists |
 | Docker executor for trusted synthetic checks | Implemented (`--execute`): byte-bound authorization, probe, per-container config checks, caps, timeout, verified cleanup. **Not verified for model-generated code**; see [docs/BOUNDARY.md](docs/BOUNDARY.md) |
 | Trusted test execution (baseline and candidate) | Runs only for allowlisted synthetic fixtures with `--execute`; without it, accepted patches stop at `blocked_boundary_unverified` |
 | Hosted CI | Workflow present; see the Actions tab for observed runs — a workflow file is not evidence of a pass |

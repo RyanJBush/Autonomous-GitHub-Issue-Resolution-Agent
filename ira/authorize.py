@@ -12,6 +12,8 @@ import json
 from .demo_repo import PROJECT_ROOT
 
 ALLOWLIST_LABEL = "HAND-REVIEWED synthetic fixtures approved for trusted synthetic execution only"
+REVIEWED_LABEL = ("OPERATOR-APPROVED recorded model outputs: each entry authorizes replay execution of exactly one "
+                  "reviewed proposal, bound by hash")
 
 
 class NotAuthorized(Exception):
@@ -31,10 +33,60 @@ def load_allowlist(pinned: dict) -> dict:
     return data
 
 
+def load_reviewed(pinned: dict) -> dict:
+    spec = pinned["reviewed_model_outputs"]
+    raw = (PROJECT_ROOT / spec["path"]).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != spec["sha256"]:
+        raise NotAuthorized("reviewed_outputs_hash_mismatch")
+    data = json.loads(raw)
+    if data.get("label") != REVIEWED_LABEL or not isinstance(data.get("entries"), list):
+        raise NotAuthorized("reviewed_outputs_label_invalid")
+    return data
+
+
+def _authorize_replay(*, adapter_identity, response_sha256, patch_sha256, new_content_sha256, base_commit,
+                      allowlisted_file, pinned, prescreen_passed) -> dict:
+    """A replay executes only if an operator-approved entry matches every hash exactly (Codex M3 amendment 5)."""
+    data = load_reviewed(pinned)
+    want = {"recording_sha256": adapter_identity.get("recording_sha256"),
+            "live_run_id": adapter_identity.get("live_run_id"), "response_sha256": response_sha256,
+            "patch_sha256": patch_sha256, "new_content_sha256": new_content_sha256, "base_commit": base_commit,
+            "allowlisted_file": allowlisted_file}
+    entries = [e for e in data["entries"] if e.get("recording_sha256") == want["recording_sha256"]]
+    if not entries:
+        raise NotAuthorized("replay_not_approved")
+    if len(entries) != 1:
+        raise NotAuthorized("replay_approval_ambiguous")
+    entry = entries[0]
+    for field, actual in want.items():
+        if entry.get(field) != actual:
+            raise NotAuthorized(f"replay_{field}_mismatch")
+    if base_commit != pinned["base_commit"]:
+        raise NotAuthorized("base_commit_not_pinned")
+    approval = entry.get("operator_approval") or {}
+    if approval.get("approved") is not True or not approval.get("approved_by") or not approval.get("approved_at") \
+            or approval.get("reviewed_whole_resulting_file") is not True:
+        raise NotAuthorized("replay_operator_approval_missing")
+    if not prescreen_passed:
+        raise NotAuthorized("replay_prescreen_failed")
+    return entry
+
+
 def authorize(*, request_kind: str, adapter_identity: dict, response_sha256: str, patch_sha256: str,
-              new_content_sha256: str, base_commit: str, allowlisted_file: str, pinned: dict) -> dict:
+              new_content_sha256: str, base_commit: str, allowlisted_file: str, pinned: dict,
+              prescreen_passed: bool = False) -> dict:
     """Return the matching allowlist entry or raise NotAuthorized with a specific detail."""
-    if request_kind != "synthetic_fixture" or adapter_identity.get("kind") != "synthetic_fixture":
+    kind = adapter_identity.get("kind")
+    if "live_model" in (request_kind, kind):
+        raise NotAuthorized("untrusted_execution_not_enabled")  # live responses are never executed
+    if request_kind != kind:
+        raise NotAuthorized("adapter_kind_mismatch")
+    if kind == "replay_recording":
+        return _authorize_replay(adapter_identity=adapter_identity, response_sha256=response_sha256,
+                                 patch_sha256=patch_sha256, new_content_sha256=new_content_sha256,
+                                 base_commit=base_commit, allowlisted_file=allowlisted_file, pinned=pinned,
+                                 prescreen_passed=prescreen_passed)
+    if kind != "synthetic_fixture":
         raise NotAuthorized("untrusted_execution_not_enabled")
     data = load_allowlist(pinned)
     if data.get("base_commit") != base_commit or base_commit != pinned["base_commit"]:

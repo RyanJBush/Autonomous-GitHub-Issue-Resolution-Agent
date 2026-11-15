@@ -19,7 +19,7 @@ SCHEMA_VERSION = "ira.packet.v1"
 REQUIRED_FIELDS = (
     "schema_version", "label", "run_kind", "run_id", "terminal_status", "status_reason", "stage_reached",
     "provenance", "request", "base", "adapter", "prompt", "response", "parsed_response", "policy", "patch",
-    "apply", "execution", "tests", "trace", "human_review", "limitations", "unavailable",
+    "apply", "execution", "tests", "trace", "human_review", "limitations", "unavailable", "end_to_end_objective",
 )
 # Fields that may be null; each null one must appear in `unavailable` with a reason (and only then).
 NULLABLE_FIELDS = ("base", "prompt", "response", "parsed_response", "patch", "apply",
@@ -72,9 +72,36 @@ def render_markdown(p: dict) -> str:
                 f"- Allowlisted file: {code_span(base['allowlisted_file'], 200)}"]
     else:
         out.append(f"- Unavailable: {visible(p['unavailable'].get('base'), L)}")
+    obj = p["end_to_end_objective"]
+    out += ["## End-to-end objective", "", f"- Status: **{obj['status']}**", f"- {visible(obj['reason'], L)}", ""]
     ad = p["adapter"]
-    out += ["", "## Adapter", "", f"- Kind: {code_span(ad.get('kind'), 40)}; name: {code_span(ad.get('name'), 80)};"
+    out += ["## Adapter", "", f"- Kind: {code_span(ad.get('kind'), 40)}; name: {code_span(ad.get('name'), 80)};"
             f" model: {code_span(ad.get('model'), 80)}; calls: {ad.get('calls')}"]
+    live = ad.get("live")
+    if live:
+        out += [f"- Requested model: {code_span(live.get('requested_model'), 64)}; returned model: "
+                f"{code_span(live.get('response_model'), 64)}; request id: {code_span(live.get('request_id'), 80)}",
+                f"- Request sent: {live.get('request_sent')}; outcome: {code_span(live.get('adapter_outcome'), 80)}; "
+                f"stop reason: {code_span(live.get('stop_reason'), 40)}",
+                f"- max_tokens {live.get('max_tokens')}, effort {code_span(live.get('effort'), 10)}, retries 0, "
+                f"tools none, fallbacks none; cost cap ${live.get('cost_cap_usd')}",
+                f"- Usage: {code_span(json.dumps(live.get('usage'), sort_keys=True), 300)}"]
+        est = live.get("pre_call_estimate")
+        if est:
+            out.append(f"- Pre-call cost ESTIMATE: ${est['total_usd_estimate']} (not a bound; "
+                       f"prices from {est['price_source']} retrieved {est['price_retrieved']})")
+        if live.get("cost_from_usage"):
+            out.append(f"- Cost ESTIMATE from reported usage: ${live['cost_from_usage']['total_usd_estimate']} "
+                       "(the provider invoice is authoritative)")
+    rec = ad.get("recording")
+    if rec:
+        out.append(f"- Recording: {code_span(rec.get('path') or rec.get('reason'), 300)} "
+                   f"sha256 {code_span(rec.get('sha256'), 64)}")
+    prov = ad.get("replay_provenance")
+    if prov:
+        out += [f"- Replay of live run {code_span(prov['live_run_id'], 64)}; recording sha256 "
+                f"{code_span(prov['recording_sha256'], 64)}; original request id "
+                f"{code_span((prov.get('live') or {}).get('request_id'), 80)}"]
     pr = p["parsed_response"]
     out += ["", "## Model response (untrusted)", ""]
     if pr:
@@ -99,6 +126,14 @@ def render_markdown(p: dict) -> str:
         text, _ = visible_block(pt["diff"], caps.MAX_PATCH_BYTES)
         out += [f"- sha256 {pt['sha256']}; {pt['bytes']} bytes; {pt['hunks']} hunk(s); +{pt['added']} -{pt['removed']}",
                 "", fenced(text, "diff")]
+        if pt.get("new_content") is not None:
+            whole, _ = visible_block(pt["new_content"], caps.MAX_SOURCE_FILE_BYTES)
+            out += ["", f"Whole resulting file {code_span(pt['path'], 200)} (sha256 {pt['new_content_sha256']}; "
+                        "review all of it, not only the diff):", "", fenced(whole, "python")]
+        ps = p["policy"].get("prescreen")
+        if ps:
+            out.append(f"- {ps['label']}: passed {ps['passed']}; findings "
+                       f"{code_span(','.join(ps['findings']) or 'none', 300)}")
     else:
         out.append(f"- Unavailable: {visible(p['unavailable'].get('patch'), L)}")
     ex = p["execution"]

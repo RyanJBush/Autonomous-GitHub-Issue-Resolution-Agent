@@ -28,3 +28,10 @@ MAX_REVIEW_FIELD_CHARS = 600
 
 # Subprocess (trusted git only) wall-clock limit, seconds.
 GIT_TIMEOUT_S = 30
+
+# Live model adapter (Milestone 3). A request may lower these; it can never raise them.
+LIVE_MODELS = ("claude-sonnet-5-5",)
+LIVE_MAX_TOKENS = 8_000
+LIVE_TIMEOUT_S = 300
+LIVE_COST_CAP_CENTS = 25
+MAX_RECORDING_BYTES = 262_144

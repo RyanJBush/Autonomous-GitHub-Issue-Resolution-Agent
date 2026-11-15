@@ -23,6 +23,7 @@ from . import caps
 
 ALLOWED_SUBCOMMANDS = frozenset({
     "init", "add", "commit", "rev-parse", "cat-file", "ls-tree", "status", "config", "apply", "diff",
+    "merge-base",  # approval verification of this project's own history only; never on the candidate path
 })
 
 # Subcommands the candidate-handling path (everything after the model response is received) may use.

@@ -48,3 +48,19 @@ def write_request(tmp_path):
 
 def fixture_response(case_id: str) -> dict:
     return json.loads((ROOT / "fixtures" / "responses" / f"{case_id}.json").read_text())
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    """Every test is offline: any Python-level IPv4/IPv6 connection fails (docker and git run as subprocesses over
+    local sockets or files and are unaffected)."""
+    import socket
+    real_connect = socket.socket.connect
+
+    def guarded(self, address):
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            raise OSError(f"network access blocked in tests: {address!r}")
+        return real_connect(self, address)
+    monkeypatch.setattr(socket.socket, "connect", guarded)
+    monkeypatch.setattr(socket, "create_connection",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("network access blocked in tests")))

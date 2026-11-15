@@ -114,11 +114,14 @@ def test_reviewed_bytes_authorized():
 
 @pytest.mark.parametrize("kind", ["live_model", "replay_recording"])
 def test_live_and_replay_refused_even_with_known_bytes(kind):
+    # Live is refused unconditionally; a replay needs an operator-approved exact-hash entry, and there are none (M3).
+    expected = {"live_model": "untrusted_execution_not_enabled", "replay_recording": "replay_not_approved"}[kind]
     with pytest.raises(NotAuthorized) as info:
-        _auth(_identity(kind=kind)[0])
-    assert info.value.detail == "untrusted_execution_not_enabled"
-    with pytest.raises(NotAuthorized):
-        _auth(_identity()[0], request_kind=kind)
+        _auth(_identity(kind=kind)[0], request_kind=kind)
+    assert info.value.detail == expected
+    with pytest.raises(NotAuthorized) as info:
+        _auth(_identity()[0], request_kind=kind)  # synthetic identity under a live/replay request
+    assert info.value.detail in ("untrusted_execution_not_enabled", "adapter_kind_mismatch")
 
 
 @pytest.mark.parametrize("field", ["response_sha256", "patch_sha256", "new_content_sha256"])

@@ -52,7 +52,15 @@ LIMITATIONS_M1 = [
 
 
 def default_adapter_factory(spec):
-    return FixtureAdapter(spec.fixture_case)
+    if spec.kind == "synthetic_fixture":
+        return FixtureAdapter(spec.fixture_case)
+    if spec.kind == "live_model":
+        from .live_adapter import LiveAdapter
+        return LiveAdapter(spec)
+    if spec.kind == "replay_recording":
+        from .replay import ReplayAdapter
+        return ReplayAdapter(spec)
+    raise AdapterError("unknown_adapter_kind", "adapter kind not supported")
 
 
 class _Run:
@@ -68,6 +76,10 @@ class _Run:
         self.request_sha256 = hashlib.sha256(raw_request).hexdigest()
         self.execution = None  # set when an executor is used
         self.tests = {"baseline": None, "candidate": None}
+        self.live = None        # live adapter record (requested/returned model, usage, estimates, errors)
+        self.replay = None      # replay provenance (live run id, recording hash, original identities)
+        self.recording = None   # recording written by a live run
+        self.prescreen = None
 
     def event(self, stage, name, code=None):
         self.stage = stage
@@ -91,14 +103,22 @@ def _project_commit():
 
 
 def execute(request_path: Path | str, out_dir: Path | str, *, adapter_factory=default_adapter_factory,
-            work_root: Path | str | None = None, pinned: dict | None = None, executor=None) -> tuple[dict, Path]:
+            work_root: Path | str | None = None, pinned: dict | None = None, executor=None,
+            live_approval: dict | None = None, recording_dir: Path | str | None = None) -> tuple[dict, Path]:
     raw_request = Path(request_path).read_bytes()
     req = load_request(raw_request)  # RequestError propagates: no run, no packet
     run_dir = Path(out_dir) / req.run_id
     if run_dir.exists():
         raise RequestError("run_id already has a packet: one attempt per run id")
+    if req.adapter.kind == "live_model":
+        # The caller must pass a packet already checked by approval.verify (operator approval + every binding).
+        binds = (live_approval or {}).get("binds") or {}
+        if not (live_approval or {}).get("operator_approval", {}).get("approved") is True \
+                or binds.get("request_sha256") != hashlib.sha256(raw_request).hexdigest():
+            raise RequestError("live call refused: no verified operator approval packet for this exact request")
     pinned = pinned or load_pinned()
     r = _Run(req, raw_request)
+    r.recording_dir = Path(recording_dir) if recording_dir else Path(out_dir) / "recordings"
     status, reason = Status.EXECUTION_ERROR, "internal_error"
     try:
         status, reason = _pipeline(r, pinned, adapter_factory, Path(work_root or tempfile.gettempdir()), executor)
@@ -153,18 +173,35 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
     r.event("prompt", "built")
 
     # Exactly one adapter call.
+    adapter = None
     try:
         adapter = adapter_factory(req.adapter)
         r.adapter_identity = {**adapter.identity(), "calls": 0}
+        if req.adapter.kind == "replay_recording":
+            r.replay = adapter.provenance()
         raw = adapter.propose(text, req.limits.max_response_bytes)
         r.adapter_identity["calls"] = adapter.calls
         if type(raw) is not bytes:
             raise AdapterError("adapter_returned_non_bytes", "adapter must return bytes")
     except AdapterError as error:
-        r.adapter_identity["calls"] = getattr(locals().get("adapter"), "calls", 0)
+        r.adapter_identity["calls"] = getattr(adapter, "calls", 0)
+        r.live = getattr(adapter, "record", None)
         r.event("adapter", "error", error.code)
         _unavail_from(r, "response", f"adapter error: {error.code}")
         return Status.ADAPTER_ERROR, error.code
+    r.live = getattr(adapter, "record", None)
+    if req.adapter.kind == "live_model":
+        from .replay import write_recording
+        try:
+            path, digest = write_recording(r.recording_dir, run_id=req.run_id, raw=raw, live_record=r.live or {},
+                                           prompt_sha256=r.fields["prompt"]["prompt_sha256"],
+                                           template_version=prompt.TEMPLATE_VERSION,
+                                           template_sha256=prompt.TEMPLATE_SHA256,
+                                           request_sha256=r.request_sha256, base_commit=vb.base_commit)
+            r.recording = {"written": True, "path": str(path), "sha256": digest}
+            r.event("adapter", "recording_written", digest[:16])
+        except (OSError, ValueError, UnicodeDecodeError) as error:
+            r.recording = {"written": False, "reason": f"{type(error).__name__}: {str(error)[:120]}"}
     stored = raw[:caps.MAX_PACKET_RAW_RESPONSE_BYTES]
     r.fields["response"] = {"raw_sha256": hashlib.sha256(raw).hexdigest(), "raw_bytes": len(raw),
                             "stored_text": stored.decode("utf-8", errors="replace"),
@@ -204,8 +241,14 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
     r.decide("patch_policy", "pass")
     r.fields["patch"] = {"path": vp.path, "sha256": vp.patch_sha256, "bytes": vp.patch_bytes, "hunks": len(vp.hunks),
                          "added": vp.added, "removed": vp.removed, "diff": parsed.diff,
-                         "new_content_sha256": vp.new_content_sha256}
+                         "new_content_sha256": vp.new_content_sha256,
+                         # The whole resulting file, so a reviewer reads its full effects, not only the diff.
+                         "new_content": vp.new_content.decode("utf-8"), "new_content_bytes": len(vp.new_content)}
     r.event("policy", "accepted")
+    from .prescreen import prescreen
+    r.prescreen = prescreen(vp.new_content)
+    r.decide("prescreen_limited", "pass" if r.prescreen["passed"] else "flagged",
+             None if r.prescreen["passed"] else ",".join(r.prescreen["findings"])[:200])
 
     try:
         conf = apply_and_confirm(vb.source_bytes, vp, parsed.diff, work_root)
@@ -232,6 +275,7 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
         entry = authorize(request_kind=req.adapter.kind, adapter_identity=r.adapter_identity,
                           response_sha256=r.fields["response"]["raw_sha256"], patch_sha256=vp.patch_sha256,
                           new_content_sha256=vp.new_content_sha256, base_commit=vb.base_commit,
+                          prescreen_passed=bool(r.prescreen and r.prescreen["passed"]),
                           allowlisted_file=vb.allowlisted_file, pinned=pinned)
     except NotAuthorized as error:
         r.decide("synthetic_execution_authorization", "fail", error.detail)
@@ -239,13 +283,15 @@ def _pipeline(r: _Run, pinned: dict, adapter_factory, work_root: Path, executor=
         r.execution = {"authorization": {"authorized": False, "detail": error.detail}, "candidate_executed": False}
         return Status.BLOCKED_BOUNDARY_UNVERIFIED, f"execution_not_authorized:{error.detail}"
     r.decide("synthetic_execution_authorization", "pass")
-    r.event("execution", "authorized", entry["case_id"])
+    entry_id = entry.get("case_id") or f"reviewed_recording:{entry.get('recording_sha256', '')[:16]}"
+    r.event("execution", "authorized", entry_id)
     from .execution import Limits
     rep = executor.run(run_id=req.run_id, repo_path=vb.path, base_commit=vb.base_commit,
                        allowlisted_file=vb.allowlisted_file, new_content=vp.new_content,
                        limits=Limits(**req.execution.model_dump()))
-    r.execution = {"authorization": {"authorized": True, "case_id": entry["case_id"],
-                                     "reviewed_effect": entry["reviewed_effect"]},
+    r.execution = {"authorization": {"authorized": True, "case_id": entry_id,
+                                     "reviewed_effect": entry.get("reviewed_effect"),
+                                     "operator_approval": entry.get("operator_approval")},
                    "candidate_executed": rep.candidate_executed, "host": rep.host, "image": rep.image,
                    "probe": rep.probe, "containers": rep.containers}
     r.tests = {"baseline": rep.baseline, "candidate": rep.candidate}
@@ -309,12 +355,13 @@ def _assemble(r: _Run, pinned: dict, status: Status, reason: str, executed_mode:
                        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
         "request": {"sha256": r.request_sha256, "snapshot": req.model_dump()},
         "base": r.fields["base"],
-        "adapter": r.adapter_identity,
+        "adapter": {**r.adapter_identity, "live": r.live, "recording": r.recording, "replay_provenance": r.replay},
         "prompt": r.fields["prompt"],
         "response": r.fields["response"],
         "parsed_response": r.fields["parsed_response"],
         "policy": {"hard_caps": {k: getattr(caps, k) for k in dir(caps) if k.isupper()},
-                   "request_limits": req.limits.model_dump(), "decisions": r.decisions},
+                   "request_limits": req.limits.model_dump(), "decisions": r.decisions,
+                   "prescreen": r.prescreen},
         "patch": r.fields["patch"],
         "apply": r.fields["apply"],
         "execution": _execution_section(r, req, executed_mode),
@@ -326,6 +373,7 @@ def _assemble(r: _Run, pinned: dict, status: Status, reason: str, executed_mode:
         "human_review": {"required": True, "pr_creation_authorized": False, "merge_authorized": False,
                          "note": "Draft PR creation requires explicit operator approval; no automatic merge."},
         "limitations": LIMITATIONS_M2 if executed_mode else LIMITATIONS_M1,
+        "end_to_end_objective": _objective(kind, status, reason),
         "unavailable": unavailable,
     }
 
@@ -340,3 +388,15 @@ def _execution_section(r: _Run, req, executed_mode: bool) -> dict:
     base.update(r.execution or {"authorization": None, "reason": "execution stage not reached"})
     base["residual_risks"] = RESIDUAL_RISKS_M2
     return base
+
+
+def _objective(kind: str, status: Status, reason: str) -> dict:
+    """Honest end-to-end status (Codex M3 amendment 6): only an evaluated real proposal can meet the objective."""
+    if kind == "synthetic_fixture":
+        return {"status": "not_applicable_synthetic_run",
+                "reason": "hand-written fixture; says nothing about a real model proposal"}
+    if kind == "replay_recording" and status is Status.TESTS_PASSED_AWAITING_HUMAN_REVIEW:
+        return {"status": "evaluated_awaiting_human_review",
+                "reason": "a real recorded proposal passed the trusted tests; human review is still required"}
+    what = "live responses are never executed" if kind == "live_model" else "the replay was not evaluated to a pass"
+    return {"status": "not_met", "reason": f"{what}; observed result: {status.value} ({reason})"}

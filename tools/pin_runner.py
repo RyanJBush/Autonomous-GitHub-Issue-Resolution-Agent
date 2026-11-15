@@ -23,11 +23,13 @@ def main(argv):
     path = ROOT / "demo" / "pinned.json"
     pinned = json.loads(path.read_text())
     want = dict(pinned)
-    want.pop("runner", None), want.pop("synthetic_allowlist", None)
+    want.pop("runner", None), want.pop("synthetic_allowlist", None), want.pop("reviewed_model_outputs", None)
     want["runner"] = {"files": {f: sha(f) for f in FILES}, "image_inputs_sha256": inputs_sha256(),
                       "base_image": BASE_IMAGE}
     want["synthetic_allowlist"] = {"path": "runner/synthetic_allowlist.json",
                                    "sha256": sha("runner/synthetic_allowlist.json")}
+    want["reviewed_model_outputs"] = {"path": "runner/reviewed_model_outputs.json",
+                                      "sha256": sha("runner/reviewed_model_outputs.json")}
     want["trusted_test"] = {**pinned["trusted_test"], "executed_in_m1": False}
     text = json.dumps(want, indent=2) + "\n"
     if "--check" in argv:

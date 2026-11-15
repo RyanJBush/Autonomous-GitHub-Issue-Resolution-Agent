@@ -21,6 +21,8 @@ in the session; "estimated" means not measured. Assistant wall-clock time is not
 | 2026-11-15 | Claude | Cleanup-precedence fix, fault-injection tests, image-trust and fork-burst wording (03:52:06Z–03:55:48Z, to commit; includes restoring dockerd after a VM restart; excludes hosted CI polling) | 3.7 min | +3 min handoff |
 | 2026-11-15 | Codex | Final M2 review and acceptance at f224d8e | unmeasured | unmeasured |
 | 2026-11-15 | Claude | M3 design and verification plan, docs only (04:01:47Z–04:03:07Z, to commit) | 1.3 min | +3 min handoff |
+| 2026-11-15 | Codex | Review of M3 design 61e823b; pricing and token-counting documentation checked | unmeasured | unmeasured |
+| 2026-11-15 | Claude | M3 offline adapter, replay, review gate, approval packet tooling and tests (04:06:25Z–04:20:06Z, to implementation commit; the approval-packet commit and handoff are reported in the handoff, because the packet binds this commit) | 13.7 min | +5 min handoff |
 
-Running totals: Claude measured ≈ 52.0 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3); Claude estimated additions ≈ 34 min;
+Running totals: Claude measured ≈ 65.7 min (2.5 + 0.6 + 23.9 + 0.9 + 1.8 + 14.7 + 2.6 + 3.7 + 1.3 + 13.7); Claude estimated additions ≈ 39 min;
 Codex ≈ 1–2 min estimated (initial audit) + ≈1 min observed (M1 review), plus unmeasured review and reasoning time.

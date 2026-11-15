@@ -1,7 +1,31 @@
 # Milestone 3 design: one real model adapter and a reviewable model-generated proposal
 
-Status: **proposal for Codex review. Not implemented.** No model has been called. Base: accepted M2 commit
-`f224d8e6c0e13b4c38db775be9f76c738ab3fdb1`, branch `m3-live-adapter`.
+Status: **offline implementation complete on `m3-live-adapter`; no model has been called.** Base: accepted M2 commit
+`f224d8e6c0e13b4c38db775be9f76c738ab3fdb1`.
+
+## Codex amendments (applied; they supersede the text below where it differs)
+
+1. **Cost is an estimate, not a bound.** `ira/pricing.py` labels every figure `ESTIMATE`. Output uses `max_tokens`,
+   which the provider documents as a strict limit that includes thinking tokens (billed as output). Input is a
+   heuristic (prompt bytes + 64 framing tokens). The provider's token-counting endpoint is free but needs an API key,
+   so it is not used before approval. Independent control: an organization or workspace spend limit in the Claude
+   Console (not settable on the default workspace); a reached self-set limit returns HTTP 400, the tier cap HTTP 429.
+2. **Approval is a person's recorded decision, not a digest.** `ira prepare-live-approval` writes a packet binding the
+   request, prompt, base, model and parameters, estimate, cap, code commit and workflow revision, with
+   `operator_approval.approved: false`. `ira run --live` refuses unless `approval.verify` recomputes every binding and
+   finds the operator's approval.
+3. **First call defaults to `claude-sonnet-5-5`** ($2 / $10 per MTok, verified on the published pricing page
+   2026-11-15), `max_tokens` 8,000, effort `medium`, 120 s timeout, cap $0.25. Access and credits are not assumed.
+4. **GitHub Environment gate is conditional.** `.github/workflows/live-proposal.yml` is prepared for review only: no
+   secret exists, it has not been dispatched, and the gate is not claimed to work until observed.
+5. **Replay authorization binds exact hashes** (recording, response, patch, resulting file, base, live run id) plus an
+   operator approval that states the whole resulting file was reviewed. Packets include the whole resulting file.
+   `runner/reviewed_model_outputs.json` is empty; no replay is enabled.
+6. **Honest outcome.** Every packet has `end_to_end_objective`; a live run is always `not_met` (never executed), and only
+   an approved replay that passes the trusted tests reaches `evaluated_awaiting_human_review`.
+7. **Offline tests only**, enforced by an autouse fixture that blocks IPv4/IPv6 connections.
+
+The sections below are the reviewed design. Where they say "Opus", "deterministic" or "bound", read the amendments.
 
 ## 0. Summary
 

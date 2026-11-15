@@ -1,0 +1,16 @@
+{
+  "label": "OPERATOR-APPROVED recorded model outputs: each entry authorizes replay execution of exactly one reviewed proposal, bound by hash",
+  "note": "Empty by design. An entry may be added only after the operator reviews the whole resulting file of one recorded proposal and explicitly approves its exact hashes.",
+  "entry_fields": [
+    "recording_sha256",
+    "live_run_id",
+    "response_sha256",
+    "patch_sha256",
+    "new_content_sha256",
+    "base_commit",
+    "allowlisted_file",
+    "reviewed_effect",
+    "operator_approval{approved,approved_by,approved_at,reviewed_whole_resulting_file}"
+  ],
+  "entries": []
+}

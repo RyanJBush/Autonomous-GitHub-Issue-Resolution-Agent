@@ -184,4 +184,4 @@ Without `IRA_REQUIRE_DOCKER=1`, the Docker tests skip when Docker or the runner 
 Patterns adapted (not copied wholesale) from the author's earlier repositories: text escaping from
 `RyanJBush/model-regression-detection-system` (`mrds/mdsafe.py`, commit `3086d87`), strict JSON loading from the same
 repository, single-attempt and terminal-code structure from `RyanJBush/swarmos` (`f956d12`), and injected-issue
-evaluation cases from `RyanJBush/prompt-injection-guardrails` (`7dddb8e`).
+evaluation cases from `RyanJBush/Prompt-Injection-Guardrails` (`7dddb8e`).

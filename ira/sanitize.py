@@ -1,6 +1,6 @@
 """Bound and neutralise untrusted text before it reaches the review packet.
 
-Adapted from the approach in RyanJBush/model-regression-detection-system (mrds/mdsafe.py at 3086d87): control,
+Adapted from the approach in RyanJBush/Model-Regression-Detection-System (mrds/mdsafe.py at 3086d87): control,
 format and line-separator characters become visible escapes, values are truncated, and inline/fenced code uses a
 fence longer than any backtick run in the content.
 """

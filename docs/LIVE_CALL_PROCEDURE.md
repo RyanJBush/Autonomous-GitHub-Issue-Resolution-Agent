@@ -61,7 +61,7 @@ inside it adds a second credential to handle.
    ```
 
    ```bash
-   gh repo clone RyanJBush/issue-resolution-agent ~/ira-live -- --branch m3-live-adapter
+   gh repo clone RyanJBush/Autonomous-GitHub-Issue-Resolution-Agent ~/ira-live -- --branch m3-live-adapter
    ```
 
    ```bash

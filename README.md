@@ -15,7 +15,7 @@ inspection logs for the separate evaluation were not retained.
 [Review the result](docs/evidence/local-qwen3-011/review-packet.md) ·
 [See the original proposal](docs/evidence/local-qwen3-011/review.md) ·
 [Run the demo](docs/DEMO.md) · [Read the limitations](docs/LOCAL_RUN.md) ·
-[View hosted CI](https://github.com/RyanJBush/issue-resolution-agent/actions/workflows/ci.yml)
+[View hosted CI](https://github.com/RyanJBush/Autonomous-GitHub-Issue-Resolution-Agent/actions/workflows/ci.yml)
 
 **Status: one real local-model proposal was separately evaluated on the synthetic demonstration issue.** The Anthropic adapter remains offline-only and has not made a real request. The local model run and evaluation have the limitations below:
 
@@ -182,6 +182,6 @@ Without `IRA_REQUIRE_DOCKER=1`, the Docker tests skip when Docker or the runner 
 ## Reuse and attribution
 
 Patterns adapted (not copied wholesale) from the author's earlier repositories: text escaping from
-`RyanJBush/model-regression-detection-system` (`mrds/mdsafe.py`, commit `3086d87`), strict JSON loading from the same
-repository, single-attempt and terminal-code structure from `RyanJBush/swarmos` (`f956d12`), and injected-issue
+`RyanJBush/Model-Regression-Detection-System` (`mrds/mdsafe.py`, commit `3086d87`), strict JSON loading from the same
+repository, single-attempt and terminal-code structure from `RyanJBush/Autonomous-Coding-Agent-with-MCP-and-Multi-Agent-Collaboration` (`f956d12`), and injected-issue
 evaluation cases from `RyanJBush/Prompt-Injection-Guardrails` (`7dddb8e`).

@@ -192,3 +192,7 @@ Patterns adapted (not copied wholesale) from the author's earlier repositories: 
 `RyanJBush/Model-Regression-Detection-System` (`mrds/mdsafe.py`, commit `3086d87`), strict JSON loading from the same
 repository, single-attempt and terminal-code structure from `RyanJBush/Autonomous-Coding-Agent-with-MCP-and-Multi-Agent-Collaboration` (`f956d12`), and injected-issue
 evaluation cases from `RyanJBush/Prompt-Injection-Guardrails` (`7dddb8e`).
+
+## License
+
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Ryan J. Bush.

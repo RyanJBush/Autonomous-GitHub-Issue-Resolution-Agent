@@ -6,6 +6,13 @@ any edit to this file requires a newly prepared and newly approved packet.
 **Why not GitHub Actions:** the repository has no GitHub Environments, `workflow_dispatch` requires the workflow on the
 default branch, and required reviewers on a private repository depend on the account plan. None of it is set up.
 
+**Current state (documentation note, not a protocol change):** statements in this file that the repository is private
+were recorded while it was private; it is now public. The steps, branch, approval packet and spending controls below
+are unchanged. The committed packet (`demo/live/approval.json`) binds the copy of this file at its `code_commit`
+(`5e08dc5`, on branch `m3-live-adapter`, sha256 `c4f8fad0…`). This copy on `main` has been edited since then (the
+repository name in the clone command, and this note), so it does not match that binding: a call from a `main` checkout
+would need a newly prepared and separately approved packet.
+
 **Why WSL Ubuntu 24.04:** the project is verified only on Linux (Ubuntu 24.04 locally and on hosted CI). The
 operator's Windows machine has Docker Desktop, whose own WSL distributions are not for general use; a separate Ubuntu
 distribution is the smallest setup that matches the verified environment. A throwaway Docker container is **not**

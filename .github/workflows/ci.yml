@@ -1,4 +1,7 @@
-# Offline checks only: synthetic fixtures, no model credentials, no secrets, no candidate execution.
+# No model credentials, no secrets, no model calls, and no model-generated code is executed.
+# - offline: pytest, synthetic fixture evaluation without execution, and the pinned demo-repository build.
+# - boundary-synthetic: builds the pinned runner image and executes only hand-written, hash-allowlisted synthetic
+#   fixtures in Docker (trusted synthetic checks, not a verified boundary for model output).
 name: ci
 
 on:
@@ -39,7 +42,7 @@ jobs:
           if-no-files-found: warn
 
   # Trusted synthetic execution evidence. Hand-written, hash-allowlisted fixtures only; no model, no secrets.
-  # contents: read is required to check out this private repository; nothing else is granted.
+  # Only contents: read is granted (used by actions/checkout); nothing else.
   boundary-synthetic:
     needs: offline
     runs-on: ubuntu-24.04

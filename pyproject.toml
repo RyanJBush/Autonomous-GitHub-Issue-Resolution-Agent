@@ -1,11 +1,13 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "issue-resolution-agent"
 version = "0.1.0"
 description = "Supervised, bounded MVP: one model proposal for one synthetic Python issue, validated by a strict patch policy and recorded in a review packet."
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = ["pydantic>=2.7,<3"]
 

@@ -1,6 +1,13 @@
-# Autonomous Issue Resolution Agent
+# Autonomous GitHub Issue Resolution Agent
 
-A supervised AI coding-workflow demonstration: a local model proposes a bounded change to one
+**Supervised AI Code Repair with Bounded Patches and Human Review**
+
+A supervised coding-agent prototype that generates bounded patch proposals for a synthetic GitHub-style issue,
+validates them against strict policies, and produces verifiable evidence for human review. "Autonomous" is the
+project's established name, not a description of the workflow: model output is never executed without an
+exact-hash operator approval, and the tool never opens or merges pull requests.
+
+In the demonstration, a local model proposes a bounded change to one
 Python function, policy checks produce a diff, and trusted tests evaluate a separately reviewed
 candidate. This MVP uses a **synthetic issue and repository**; it does not fetch GitHub issues or
 autonomously open pull requests.

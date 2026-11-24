@@ -4,8 +4,8 @@
 
 A supervised coding-agent prototype that generates bounded patch proposals for a synthetic GitHub-style issue,
 validates them against strict policies, and produces verifiable evidence for human review. "Autonomous" is the
-project's established name, not a description of the workflow: model output is never executed without an
-exact-hash operator approval, and the tool never opens or merges pull requests.
+project's established name, not a description of the workflow: the tool never executes model output without an
+exact-hash operator approval, and it never opens or merges pull requests.
 
 In the demonstration, a local model proposes a bounded change to one
 Python function, policy checks produce a diff, and trusted tests evaluate a separately reviewed
